@@ -1619,7 +1619,11 @@
 
     const syncStoreSnapshot = (database) => {
         try {
-            store.importFromJson(JSON.stringify(database));
+            if (typeof store.setDatabase === 'function') {
+                store.setDatabase(database, 'admin-sync');
+            } else {
+                store.importFromJson(JSON.stringify(database));
+            }
         } catch (error) {
             console.warn('[Admin] Failed to sync store snapshot:', error);
         }
@@ -1628,6 +1632,47 @@
     const applyDatabase = (database) => {
         state.database = store.normalizeDatabase(database || {});
         syncStoreSnapshot(state.database);
+    };
+
+    const fetchCanonicalSnapshot = async () => api('/data/canonical/l2wiki-canonical.json');
+
+    const rebuildSectionSnapshotLocally = (database, sectionId) => {
+        const nextDatabase = cloneDatabase();
+        const nextSection = nextDatabase.sections?.[sectionId];
+
+        if (!nextSection) {
+            return nextDatabase;
+        }
+
+        const groups = Array.isArray(nextSection.groups) ? nextSection.groups.map((group) => ({ ...group, entries: [] })) : [];
+        const allowedGroups = new Set(groups.map((group) => group.id));
+        const fallbackGroupId = groups[0]?.id || '';
+
+        Object.values(nextDatabase.articles || {})
+            .filter((article) => article.section === sectionId)
+            .sort(sortByOrder)
+            .forEach((article) => {
+                if ((!article.group || !allowedGroups.has(article.group)) && fallbackGroupId) {
+                    article.group = fallbackGroupId;
+                }
+
+                const targetGroup = groups.find((group) => group.id === article.group) || groups[0];
+
+                if (targetGroup) {
+                    targetGroup.entries.push(article.id);
+                }
+            });
+
+        groups.forEach((group) => {
+            group.entries.sort((leftId, rightId) => sortByOrder(nextDatabase.articles[leftId], nextDatabase.articles[rightId]));
+        });
+
+        nextDatabase.sections[sectionId] = {
+            ...nextSection,
+            groups,
+        };
+
+        return nextDatabase;
     };
 
     const populateGroupSelect = (sectionId, selectedGroupId = '') => {
@@ -2142,9 +2187,9 @@
         if (options.database) {
             applyDatabase(options.database);
         } else if (options.forceServerExport) {
-            applyDatabase(await api('/api/export'));
+            applyDatabase(await fetchCanonicalSnapshot());
         } else if (!Object.keys(getDatabase().articles || {}).length) {
-            applyDatabase(await api('/api/export'));
+            applyDatabase(await fetchCanonicalSnapshot());
         }
 
         await refreshBackups();
@@ -2182,11 +2227,13 @@
 
         try {
             const section = readSectionForm();
-            await api(`/api/section/${encodeURIComponent(section.id)}`, {
+            const savedSection = await api(`/api/section/${encodeURIComponent(section.id)}`, {
                 method: 'PUT',
                 body: JSON.stringify(section),
             });
-            await refreshDatabase({ sectionId: section.id, forceServerExport: true });
+            const nextDatabase = cloneDatabase();
+            nextDatabase.sections[savedSection.id] = savedSection;
+            await refreshDatabase({ sectionId: savedSection.id, database: rebuildSectionSnapshotLocally(nextDatabase, savedSection.id) });
             showToast(`Раздел "${section.title}" сохранен.`);
         } catch (error) {
             showToast(error.message || 'Не удалось сохранить раздел.', 'error');
@@ -2390,7 +2437,9 @@
                 resetSectionForm();
             }
 
-            await refreshDatabase({ forceServerExport: true });
+            const nextDatabase = cloneDatabase();
+            delete nextDatabase.sections[sectionId];
+            await refreshDatabase({ database: nextDatabase });
             showToast(`Раздел "${section.title}" удален.`);
         } catch (error) {
             showToast(error.message || 'Не удалось удалить раздел.', 'error');

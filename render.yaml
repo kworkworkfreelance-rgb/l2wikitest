@@ -13,6 +13,12 @@ services:
             sync: false
           - key: L2WIKI_STORAGE_DIR
             value: /var/data/l2wiki
+          - key: L2WIKI_ENABLE_SQLITE_SYNC
+            value: "0"
+          - key: L2WIKI_ENABLE_STATIC_PUBLISH
+            value: "0"
+          - key: L2WIKI_ENABLE_BACKUPS
+            value: "0"
       disk:
           name: data
           mountPath: /var/data
