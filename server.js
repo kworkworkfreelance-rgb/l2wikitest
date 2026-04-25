@@ -79,7 +79,9 @@ const CANONICAL_DIR = path.join(MUTABLE_DATA_DIR, 'canonical');
 const STATIC_DATA_PATH = path.join(MUTABLE_ASSETS_DIR, 'static-data.js');
 const APP_STATIC_DATA_PATH = path.join(ROOT_DIR, 'assets', 'js', 'static-data.js');
 const STORAGE_CANONICAL_PATH = path.join(CANONICAL_DIR, 'l2wiki-canonical.json');
+const STORAGE_CANONICAL_META_PATH = path.join(CANONICAL_DIR, 'l2wiki-meta.json');
 const APP_CANONICAL_PATH = path.join(ROOT_DIR, 'data', 'canonical', 'l2wiki-canonical.json');
+const APP_CANONICAL_META_PATH = path.join(ROOT_DIR, 'data', 'canonical', 'l2wiki-meta.json');
 const LEGACY_JSON_PATH = path.join(ROOT_DIR, 'l2wiki-db-2026-04-07.json');
 const DB_PATH = path.join(STORAGE_DIR, 'l2wiki.db');
 
@@ -95,6 +97,18 @@ const ADMIN_SESSIONS = new Map();
 
 let mutationQueue = Promise.resolve();
 let sqliteSyncQueue = Promise.resolve();
+
+const createEmptyDatabase = () =>
+    normalizeDatabase({
+        version: 2,
+        updatedAt: new Date().toISOString(),
+        site: {
+            name: 'L2Wiki.Su',
+            subtitle: 'Р‘Р°Р·Р° Р·РЅР°РЅРёР№ РїРѕ Lineage II',
+        },
+        sections: {},
+        articles: {},
+    });
 
 const ensureDir = (targetPath) => {
     if (!fs.existsSync(targetPath)) {
@@ -150,8 +164,7 @@ const writeFileAtomic = (targetPath, contents) => {
 };
 
 const writeStaticDataFile = (database, sourceLabel = 'server-publish') => {
-    const normalized = normalizeDatabase(database);
-    return writeFileAtomic(STATIC_DATA_PATH, buildStaticDataSource(normalized, sourceLabel));
+    return writeFileAtomic(STATIC_DATA_PATH, buildStaticDataSource(database, sourceLabel));
 };
 
 const writeBackupSnapshot = (database, reason = 'publish') => {
@@ -160,12 +173,17 @@ const writeBackupSnapshot = (database, reason = 'publish') => {
     const safeReason = String(reason || 'publish').replace(/[^a-z0-9_-]+/gi, '-');
     const fileName = `${stamp}-${safeReason}.json`;
     const filePath = path.join(BACKUP_DIR, fileName);
-    fs.writeFileSync(filePath, JSON.stringify(compactForStorage(normalizeDatabase(database)) || {}), 'utf8');
+    fs.writeFileSync(filePath, JSON.stringify(compactForStorage(database) || {}), 'utf8');
     return {
         fileName,
         filePath,
     };
 };
+
+const writeCanonicalJsonFile = (database) =>
+    writeFileAtomic(STORAGE_CANONICAL_PATH, JSON.stringify(compactForStorage(database) || {}));
+
+const writeCanonicalMetaFile = (database) => writeFileAtomic(STORAGE_CANONICAL_META_PATH, JSON.stringify(buildMeta(database)));
 
 const listBackupSnapshots = () => {
     ensureDir(BACKUP_DIR);
@@ -184,11 +202,6 @@ const listBackupSnapshots = () => {
                 updatedAt: stats.mtime.toISOString(),
             };
         });
-};
-
-const parseDatabaseTimestamp = (database) => {
-    const timestamp = Date.parse(database?.updatedAt || '');
-    return Number.isFinite(timestamp) ? timestamp : 0;
 };
 
 const readFilePrefix = (filePath, maxBytes = 256) => {
@@ -267,6 +280,9 @@ const extractSeedDataFromChunkLoader = (source, filePath) => {
 const resolveCanonicalJsonPath = () =>
     [STORAGE_CANONICAL_PATH, APP_CANONICAL_PATH].find((filePath) => fs.existsSync(filePath) && !isGitLfsPointerFile(filePath)) || null;
 
+const resolveCanonicalMetaPath = () =>
+    [STORAGE_CANONICAL_META_PATH, APP_CANONICAL_META_PATH].find((filePath) => fs.existsSync(filePath) && !isGitLfsPointerFile(filePath)) || null;
+
 const loadJsonCandidate = (filePath, label) => {
     if (!fs.existsSync(filePath)) {
         return null;
@@ -311,59 +327,23 @@ const loadStaticSeedCandidate = (filePath, label) => {
     }
 };
 
-const loadInitialDatabase = () => {
-    const seenPaths = new Set();
-    const candidateSpecs = [
-        { filePath: STATIC_DATA_PATH, label: 'storage static-data', kind: 'static' },
-        { filePath: STORAGE_CANONICAL_PATH, label: 'storage canonical', kind: 'json' },
-        { filePath: APP_STATIC_DATA_PATH, label: 'app static-data', kind: 'static' },
-        { filePath: APP_CANONICAL_PATH, label: 'app canonical', kind: 'json' },
-        { filePath: LEGACY_JSON_PATH, label: 'legacy json', kind: 'json' },
-    ];
-
-    const candidates = candidateSpecs
-        .map((spec) => {
-            if (seenPaths.has(spec.filePath)) {
-                return null;
-            }
-
-            seenPaths.add(spec.filePath);
-            return spec.kind === 'static'
-                ? loadStaticSeedCandidate(spec.filePath, spec.label)
-                : loadJsonCandidate(spec.filePath, spec.label);
-        })
-        .filter(Boolean)
-        .sort((left, right) => {
-            const timestampDelta = parseDatabaseTimestamp(right.data) - parseDatabaseTimestamp(left.data);
-            if (timestampDelta !== 0) {
-                return timestampDelta;
-            }
-
-            return left.label.localeCompare(right.label);
-        });
+const loadDatabaseFromDisk = () => {
+    const candidates = [
+        loadJsonCandidate(STORAGE_CANONICAL_PATH, 'storage canonical'),
+        loadJsonCandidate(APP_CANONICAL_PATH, 'app canonical'),
+        loadStaticSeedCandidate(STATIC_DATA_PATH, 'storage static-data'),
+        loadStaticSeedCandidate(APP_STATIC_DATA_PATH, 'app static-data'),
+        loadJsonCandidate(LEGACY_JSON_PATH, 'legacy json'),
+    ].filter(Boolean);
 
     if (candidates.length) {
-        const selected = candidates[0];
-        console.log(
-            `[boot] Using ${selected.label}: ${Object.keys(selected.data.sections || {}).length} sections, ${
-                Object.keys(selected.data.articles || {}).length
-            } articles`
-        );
-        return selected.data;
+        return candidates[0];
     }
 
-    console.warn('[boot] No canonical or static seed found. Starting with an empty database.');
-
-    return normalizeDatabase({
-        version: 2,
-        updatedAt: new Date().toISOString(),
-        site: {
-            name: 'L2Wiki.Su',
-            subtitle: 'База знаний по Lineage II',
-        },
-        sections: {},
-        articles: {},
-    });
+    return {
+        label: 'empty database',
+        data: createEmptyDatabase(),
+    };
 };
 
 const buildMeta = (database) => ({
@@ -380,9 +360,49 @@ const buildMeta = (database) => ({
 });
 
 const cloneDatabase = (database) => deepClone(database || {});
+const loadMetaFromDisk = () => {
+    const metaPath = resolveCanonicalMetaPath();
 
-const getLiveDatabase = () => app.locals.database || normalizeDatabase({});
-const getWritableDatabase = () => cloneDatabase(getLiveDatabase());
+    if (metaPath) {
+        try {
+            return JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        } catch (error) {
+            console.warn(`[boot] Failed to parse canonical meta: ${error.message}`);
+        }
+    }
+
+    const canonicalPath = resolveCanonicalJsonPath();
+
+    if (canonicalPath) {
+        try {
+            const stats = fs.statSync(canonicalPath);
+            return {
+                version: 2,
+                updatedAt: stats.mtime.toISOString(),
+                site: {
+                    name: 'L2Wiki.Su',
+                    subtitle: '',
+                },
+                counts: {
+                    sections: 0,
+                    articles: 0,
+                },
+            };
+        } catch {}
+    }
+
+    return buildMeta(createEmptyDatabase());
+};
+
+const getLiveMeta = () => app.locals.databaseMeta || buildMeta(app.locals.database || createEmptyDatabase());
+const getDatabaseSnapshot = () => {
+    if (app.locals.database) {
+        return cloneDatabase(app.locals.database);
+    }
+
+    return loadDatabaseFromDisk().data;
+};
+const getWritableDatabase = () => getDatabaseSnapshot();
 
 const sortByOrder = (left, right) => {
     const leftOrder = Number.isFinite(Number(left?.order)) ? Number(left.order) : 9999;
@@ -424,9 +444,12 @@ const publishDatabase = async (database, reason = 'publish') => {
         version: 2,
     });
 
+    writeCanonicalJsonFile(normalized);
+    writeCanonicalMetaFile(normalized);
     writeStaticDataFile(normalized, reason);
     writeBackupSnapshot(normalized, reason);
-    app.locals.database = normalized;
+    app.locals.database = null;
+    app.locals.databaseMeta = buildMeta(normalized);
     enqueueSqliteSync(normalized, reason);
 
     return normalized;
@@ -563,7 +586,7 @@ app.get(
     '/data/canonical/l2wiki-canonical.json',
     asyncRoute(async (req, res) => {
         if (!sendCanonicalDatabase(res)) {
-            sendNoStoreJson(res, getLiveDatabase());
+            sendNoStoreJson(res, getDatabaseSnapshot());
         }
     })
 );
@@ -571,7 +594,14 @@ app.get(
 app.get(
     '/data/canonical/l2wiki-meta.json',
     asyncRoute(async (req, res) => {
-        sendNoStoreJson(res, buildMeta(app.locals.database));
+        const metaPath = resolveCanonicalMetaPath();
+
+        if (metaPath) {
+            sendMutableFile(res, metaPath, 'application/json; charset=utf-8');
+            return;
+        }
+
+        sendNoStoreJson(res, getLiveMeta());
     })
 );
 
@@ -676,10 +706,11 @@ app.post(
 app.get(
     '/api/database',
     asyncRoute(async (req, res) => {
+        const wantsFullDatabase = String(req.query.full || '') === '1';
         sendNoStoreJson(res, {
             ok: true,
-            database: getLiveDatabase(),
-            meta: buildMeta(getLiveDatabase()),
+            database: wantsFullDatabase ? getDatabaseSnapshot() : null,
+            meta: getLiveMeta(),
         });
     })
 );
@@ -689,7 +720,7 @@ app.get(
     requireAdmin,
     asyncRoute(async (req, res) => {
         if (!sendCanonicalDatabase(res)) {
-            sendNoStoreJson(res, getLiveDatabase());
+            sendNoStoreJson(res, getDatabaseSnapshot());
         }
     })
 );
@@ -708,7 +739,8 @@ app.get(
 app.get(
     '/api/sections',
     asyncRoute(async (req, res) => {
-        const sections = Object.values(app.locals.database.sections || {}).sort(sortByOrder);
+        const database = getDatabaseSnapshot();
+        const sections = Object.values(database.sections || {}).sort(sortByOrder);
         res.json(sections);
     })
 );
@@ -716,7 +748,8 @@ app.get(
 app.get(
     '/api/section/:id',
     asyncRoute(async (req, res) => {
-        const section = app.locals.database.sections?.[req.params.id];
+        const database = getDatabaseSnapshot();
+        const section = database.sections?.[req.params.id];
 
         if (!section) {
             res.status(404).json({ error: 'Section not found' });
@@ -739,7 +772,7 @@ app.put(
                 ...req.body,
                 id: sectionId,
             };
-            return normalizeDatabase(database);
+            return database;
         });
 
         res.json(savedDatabase.sections[sectionId]);
@@ -751,7 +784,8 @@ app.delete(
     requireAdmin,
     asyncRoute(async (req, res) => {
         const sectionId = String(req.params.id || '').trim();
-        const hasArticles = Object.values(app.locals.database.articles || {}).some((article) => article.section === sectionId);
+        const database = getDatabaseSnapshot();
+        const hasArticles = Object.values(database.articles || {}).some((article) => article.section === sectionId);
 
         if (hasArticles) {
             res.status(400).json({ error: 'Сначала перенесите или удалите статьи из этого раздела' });
@@ -760,7 +794,7 @@ app.delete(
 
         await queueDatabaseMutation(`delete-section-${sectionId}`, async (database) => {
             delete database.sections[sectionId];
-            return normalizeDatabase(database);
+            return database;
         });
 
         res.json({ ok: true });
@@ -770,7 +804,8 @@ app.delete(
 app.get(
     '/api/article/:id',
     asyncRoute(async (req, res) => {
-        const article = app.locals.database.articles?.[req.params.id];
+        const database = getDatabaseSnapshot();
+        const article = database.articles?.[req.params.id];
 
         if (!article) {
             res.status(404).json({ error: 'Article not found' });
@@ -793,7 +828,7 @@ app.put(
                 ...req.body,
                 id: articleId,
             };
-            return normalizeDatabase(database);
+            return database;
         });
 
         res.json(savedDatabase.articles[articleId]);
@@ -808,7 +843,7 @@ app.delete(
 
         await queueDatabaseMutation(`delete-article-${articleId}`, async (database) => {
             delete database.articles[articleId];
-            return normalizeDatabase(database);
+            return database;
         });
 
         res.json({ ok: true });
@@ -824,7 +859,7 @@ app.put(
                 ...(database.site || {}),
                 ...(req.body || {}),
             };
-            return normalizeDatabase(database);
+            return database;
         });
 
         res.json(savedDatabase.site);
@@ -835,7 +870,7 @@ app.post(
     '/api/import',
     requireAdmin,
     asyncRoute(async (req, res) => {
-        const savedDatabase = await queueDatabaseMutation('import', async () => normalizeDatabase(req.body || {}));
+        const savedDatabase = await queueDatabaseMutation('import', async () => req.body || {});
 
         res.json({
             ok: true,
@@ -849,7 +884,7 @@ app.post(
     '/api/reset',
     requireAdmin,
     asyncRoute(async (req, res) => {
-        const savedDatabase = await queueDatabaseMutation('reset', async (database) => normalizeDatabase(database));
+        const savedDatabase = await queueDatabaseMutation('reset', async (database) => database);
 
         res.json({
             ok: true,
@@ -890,14 +925,15 @@ const start = async () => {
 
     ensureMutableStorage();
     const adminAuth = ensureAdminAuthFile(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
-
-    const database = loadInitialDatabase();
     const db = SQLITE_SYNC_ENABLED ? new sqlite3.Database(DB_PATH) : null;
+    const initialMeta = loadMetaFromDisk();
 
     app.locals.db = db;
-    app.locals.database = database;
+    app.locals.database = null;
+    app.locals.databaseMeta = initialMeta;
 
     if (db) {
+        const database = loadDatabaseFromDisk().data;
         await ensureSqliteSchema(db);
         await enqueueSqliteSync(database, 'boot');
     }
@@ -907,9 +943,7 @@ const start = async () => {
         console.log(`[boot] Storage directory: ${STORAGE_DIR}`);
         console.log(`[boot] Static data path: ${activeStaticDataPath}`);
         console.log(`[boot] JSON body limit: ${REQUEST_BODY_LIMIT}`);
-        console.log(
-            `[boot] Database ready: ${Object.keys(database.sections || {}).length} sections, ${Object.keys(database.articles || {}).length} articles`
-        );
+        console.log(`[boot] Database ready: ${initialMeta.counts.sections} sections, ${initialMeta.counts.articles} articles`);
         console.log(`[boot] SQLite sync: ${SQLITE_SYNC_ENABLED ? 'enabled' : 'disabled'}`);
         console.log(`[boot] Server listening on http://0.0.0.0:${PORT} (bound to all interfaces)`);
         console.log(`[boot] Admin login: ${DEFAULT_ADMIN_USERNAME} (password is loaded from .env or stored admin state)`);
