@@ -12,6 +12,8 @@
         editingSectionId: '',
         articleSearch: '',
         articleSectionFilter: '',
+        articlePage: 1,
+        sectionPage: 1,
         database: store.getDatabase(),
         backups: [],
         adminUsername: window.L2WikiAdminSession?.username || 'admin',
@@ -19,6 +21,9 @@
         contactsRowSeed: 0,
         builderSeed: 0,
     };
+
+    const ADMIN_ARTICLE_PAGE_SIZE = 18;
+    const ADMIN_SECTION_PAGE_SIZE = 10;
 
     const elements = {
         panelButtons: Array.from(document.querySelectorAll('[data-panel-button]')),
@@ -156,6 +161,86 @@
         }
 
         return String(left?.title || left?.label || '').localeCompare(String(right?.title || right?.label || ''), 'ru');
+    };
+
+    const clampPage = (page, totalPages) => {
+        const safeTotal = Math.max(1, Number(totalPages) || 1);
+        const numericPage = Number(page) || 1;
+        return Math.min(Math.max(1, numericPage), safeTotal);
+    };
+
+    const buildAdminPager = ({ kind, currentPage, totalPages, totalItems, pageSize }) => {
+        const safeCurrentPage = clampPage(currentPage, totalPages);
+        const safeTotalPages = Math.max(1, totalPages || 1);
+        const safeTotalItems = Math.max(0, totalItems || 0);
+        const start = safeTotalItems ? (safeCurrentPage - 1) * pageSize + 1 : 0;
+        const end = safeTotalItems ? Math.min(safeTotalItems, start + pageSize - 1) : 0;
+
+        if (safeTotalPages <= 1) {
+            return `
+                <div class="admin-pagination admin-pagination--single">
+                    <span class="admin-pagination__summary">Показано ${start}-${end} из ${safeTotalItems}</span>
+                </div>
+            `;
+        }
+
+        const pages = [];
+        let lastPage = 0;
+
+        for (let page = 1; page <= safeTotalPages; page += 1) {
+            const nearCurrent = Math.abs(page - safeCurrentPage) <= 1;
+            const isEdge = page === 1 || page === safeTotalPages;
+
+            if (!nearCurrent && !isEdge) {
+                continue;
+            }
+
+            if (page - lastPage > 1) {
+                pages.push('<span class="admin-pagination__gap">…</span>');
+            }
+
+            pages.push(`
+                <button
+                    class="admin-pagination__page ${page === safeCurrentPage ? 'is-active' : ''}"
+                    type="button"
+                    data-admin-page-kind="${escapeHtml(kind)}"
+                    data-admin-page="${page}"
+                    ${page === safeCurrentPage ? 'aria-current="page"' : ''}
+                >
+                    ${page}
+                </button>
+            `);
+            lastPage = page;
+        }
+
+        return `
+            <div class="admin-pagination">
+                <span class="admin-pagination__summary">Показано ${start}-${end} из ${safeTotalItems}</span>
+                <div class="admin-pagination__actions">
+                    <button
+                        class="admin-button admin-button--ghost admin-button--small"
+                        type="button"
+                        data-admin-page-kind="${escapeHtml(kind)}"
+                        data-admin-page-nav="prev"
+                        ${safeCurrentPage <= 1 ? 'disabled' : ''}
+                    >
+                        Назад
+                    </button>
+                    <div class="admin-pagination__pages" role="navigation" aria-label="Страницы списка">
+                        ${pages.join('')}
+                    </div>
+                    <button
+                        class="admin-button admin-button--ghost admin-button--small"
+                        type="button"
+                        data-admin-page-kind="${escapeHtml(kind)}"
+                        data-admin-page-nav="next"
+                        ${safeCurrentPage >= safeTotalPages ? 'disabled' : ''}
+                    >
+                        Вперед
+                    </button>
+                </div>
+            </div>
+        `;
     };
 
     const showToast = (message, type = 'success') => {
@@ -1893,31 +1978,47 @@
             return;
         }
 
-        elements.articleList.innerHTML = articles
-            .map(
-                (article) => `
-                    <article class="admin-item ${state.editingArticleId === article.id ? 'is-selected' : ''}">
-                        <div class="admin-item__head">
-                            <div>
-                                <h3 class="admin-item__title">${escapeHtml(article.title)}</h3>
-                                <div class="admin-item__meta">
-                                    <span class="admin-chip">ID: ${escapeHtml(article.id)}</span>
-                                    <span class="admin-chip">${escapeHtml(getSectionTitle(article.section))}</span>
-                                    <span class="admin-chip">${escapeHtml(getGroupLabel(article.section, article.group))}</span>
-                                    <span class="admin-chip">${article.blocks?.length || 0} blocks</span>
+        const totalPages = Math.ceil(articles.length / ADMIN_ARTICLE_PAGE_SIZE);
+        const safePage = clampPage(state.articlePage, totalPages);
+        const offset = (safePage - 1) * ADMIN_ARTICLE_PAGE_SIZE;
+        const visibleArticles = articles.slice(offset, offset + ADMIN_ARTICLE_PAGE_SIZE);
+
+        state.articlePage = safePage;
+
+        elements.articleList.innerHTML = `
+            ${buildAdminPager({
+                kind: 'articles',
+                currentPage: safePage,
+                totalPages,
+                totalItems: articles.length,
+                pageSize: ADMIN_ARTICLE_PAGE_SIZE,
+            })}
+            ${visibleArticles
+                .map(
+                    (article) => `
+                        <article class="admin-item ${state.editingArticleId === article.id ? 'is-selected' : ''}">
+                            <div class="admin-item__head">
+                                <div>
+                                    <h3 class="admin-item__title">${escapeHtml(article.title)}</h3>
+                                    <div class="admin-item__meta">
+                                        <span class="admin-chip">ID: ${escapeHtml(article.id)}</span>
+                                        <span class="admin-chip">${escapeHtml(getSectionTitle(article.section))}</span>
+                                        <span class="admin-chip">${escapeHtml(getGroupLabel(article.section, article.group))}</span>
+                                        <span class="admin-chip">${article.blocks?.length || 0} blocks</span>
+                                    </div>
+                                </div>
+                                <div class="admin-item__actions">
+                                    <a class="admin-button admin-button--ghost" href="/pages/article.html?article=${encodeURIComponent(article.id)}" target="_blank" rel="noreferrer">Открыть</a>
+                                    <button class="admin-button admin-button--ghost" type="button" data-edit-article="${escapeHtml(article.id)}">Редактировать</button>
+                                    <button class="admin-button admin-button--danger" type="button" data-delete-article="${escapeHtml(article.id)}">Удалить</button>
                                 </div>
                             </div>
-                            <div class="admin-item__actions">
-                                <a class="admin-button admin-button--ghost" href="/pages/article.html?article=${encodeURIComponent(article.id)}" target="_blank" rel="noreferrer">Открыть</a>
-                                <button class="admin-button admin-button--ghost" type="button" data-edit-article="${escapeHtml(article.id)}">Редактировать</button>
-                                <button class="admin-button admin-button--danger" type="button" data-delete-article="${escapeHtml(article.id)}">Удалить</button>
-                            </div>
-                        </div>
-                        <p class="admin-item__summary">${escapeHtml(article.summary || 'Краткое описание пока не заполнено.')}</p>
-                    </article>
-                `
-            )
-            .join('');
+                            <p class="admin-item__summary">${escapeHtml(article.summary || 'Краткое описание пока не заполнено.')}</p>
+                        </article>
+                    `
+                )
+                .join('')}
+        `;
     };
 
     const renderSectionList = () => {
@@ -1929,33 +2030,53 @@
             return;
         }
 
-        elements.sectionList.innerHTML = sections
-            .map((section) => {
-                const articleCount = Object.values(database.articles || {}).filter((article) => article.section === section.id).length;
-                return `
-                    <article class="admin-item ${state.editingSectionId === section.id ? 'is-selected' : ''}">
-                        <div class="admin-item__head">
-                            <div>
-                                <h3 class="admin-item__title">${escapeHtml(section.title)}</h3>
-                                <div class="admin-item__meta">
-                                    <span class="admin-chip">ID: ${escapeHtml(section.id)}</span>
-                                    <span class="admin-chip">${articleCount} материалов</span>
-                                    <span class="admin-chip">${section.groups?.length || 0} групп</span>
-                                    <span class="admin-chip">${section.catalogRows?.length || 0} строк каталога</span>
+        const totalPages = Math.ceil(sections.length / ADMIN_SECTION_PAGE_SIZE);
+        const safePage = clampPage(state.sectionPage, totalPages);
+        const offset = (safePage - 1) * ADMIN_SECTION_PAGE_SIZE;
+        const visibleSections = sections.slice(offset, offset + ADMIN_SECTION_PAGE_SIZE);
+
+        state.sectionPage = safePage;
+
+        elements.sectionList.innerHTML = `
+            ${buildAdminPager({
+                kind: 'sections',
+                currentPage: safePage,
+                totalPages,
+                totalItems: sections.length,
+                pageSize: ADMIN_SECTION_PAGE_SIZE,
+            })}
+            ${visibleSections
+                .map((section) => {
+                    const articleCount = Object.values(database.articles || {}).filter((article) => article.section === section.id).length;
+                    return `
+                        <article class="admin-item ${state.editingSectionId === section.id ? 'is-selected' : ''}">
+                            <div class="admin-item__head">
+                                <div>
+                                    <h3 class="admin-item__title">${escapeHtml(section.title)}</h3>
+                                    <div class="admin-item__meta">
+                                        <span class="admin-chip">ID: ${escapeHtml(section.id)}</span>
+                                        <span class="admin-chip">${articleCount} материалов</span>
+                                        <span class="admin-chip">${section.groups?.length || 0} групп</span>
+                                        <span class="admin-chip">${section.catalogRows?.length || 0} строк каталога</span>
+                                    </div>
+                                </div>
+                                <div class="admin-item__actions">
+                                    <a class="admin-button admin-button--ghost" href="/pages/section.html?section=${encodeURIComponent(section.id)}" target="_blank" rel="noreferrer">Открыть</a>
+                                    <button class="admin-button admin-button--ghost" type="button" data-edit-section="${escapeHtml(section.id)}">Редактировать</button>
+                                    <button class="admin-button admin-button--danger" type="button" data-delete-section="${escapeHtml(section.id)}">Удалить</button>
                                 </div>
                             </div>
-                            <div class="admin-item__actions">
-                                <a class="admin-button admin-button--ghost" href="/pages/section.html?section=${encodeURIComponent(section.id)}" target="_blank" rel="noreferrer">Открыть</a>
-                                <button class="admin-button admin-button--ghost" type="button" data-edit-section="${escapeHtml(section.id)}">Редактировать</button>
-                                <button class="admin-button admin-button--danger" type="button" data-delete-section="${escapeHtml(section.id)}">Удалить</button>
-                            </div>
-                        </div>
-                        <p class="admin-item__summary">${escapeHtml(section.description || 'Описание раздела пока не заполнено.')}</p>
-                    </article>
-                `;
-            })
-            .join('');
+                            <p class="admin-item__summary">${escapeHtml(section.description || 'Описание раздела пока не заполнено.')}</p>
+                        </article>
+                    `;
+                })
+                .join('')}
+        `;
     };
+
+
+
+
 
     const renderBackups = () => {
         const database = getDatabase();
@@ -2596,11 +2717,13 @@
 
     elements.articleSearchInput.addEventListener('input', (event) => {
         state.articleSearch = event.target.value || '';
+        state.articlePage = 1;
         renderArticleList();
     });
 
     elements.articleSectionFilter.addEventListener('change', (event) => {
         state.articleSectionFilter = event.target.value || '';
+        state.articlePage = 1;
         renderArticleList();
     });
 
@@ -2670,6 +2793,39 @@
 
         if (panelButton) {
             switchPanel(panelButton.dataset.openPanel);
+        }
+
+        const pageButton = event.target.closest('[data-admin-page-kind]');
+
+        if (pageButton) {
+            const kind = pageButton.dataset.adminPageKind || '';
+            const pageValue = Number(pageButton.dataset.adminPage || 0);
+
+            if (kind === 'articles') {
+                if (pageButton.dataset.adminPageNav === 'prev') {
+                    state.articlePage = Math.max(1, state.articlePage - 1);
+                } else if (pageButton.dataset.adminPageNav === 'next') {
+                    state.articlePage += 1;
+                } else if (pageValue > 0) {
+                    state.articlePage = pageValue;
+                }
+
+                renderArticleList();
+                return;
+            }
+
+            if (kind === 'sections') {
+                if (pageButton.dataset.adminPageNav === 'prev') {
+                    state.sectionPage = Math.max(1, state.sectionPage - 1);
+                } else if (pageButton.dataset.adminPageNav === 'next') {
+                    state.sectionPage += 1;
+                } else if (pageValue > 0) {
+                    state.sectionPage = pageValue;
+                }
+
+                renderSectionList();
+                return;
+            }
         }
 
         const editArticleButton = event.target.closest('[data-edit-article]');

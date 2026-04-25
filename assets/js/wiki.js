@@ -159,7 +159,18 @@ const getGroupLandingArticle = (database, section, group) => {
     return leadArticleId ? getArticle(database, leadArticleId) : null;
 };
 
-const buildGroupNavigationUrl = (database, section, group) => buildSectionUrl(section.id, group.id);
+const buildGroupNavigationUrl = (database, section, group) => {
+    const landingArticle = getGroupLandingArticle(database, section, group);
+    const shouldOpenLandingArticle =
+        Boolean(group?.landingArticleId && landingArticle) ||
+        (section?.id === 'quests' && (/^profession-\d+$/.test(group?.id || '') || group?.id === 'alternative-profession') && landingArticle);
+
+    if (shouldOpenLandingArticle) {
+        return buildArticleUrl(landingArticle.id);
+    }
+
+    return buildSectionUrl(section.id, group.id);
+};
 
 const getProfessionRoman = (sectionId, groupId) => {
     if (sectionId !== 'quests') {
@@ -821,7 +832,7 @@ const renderClassTreeBlock = (block) => {
     }
 
     return `
-        <section class="wiki-panel rich-block rich-block--class-tree">
+        <section class="wiki-panel rich-block rich-block--class-tree"${block.id ? ` id="${escapeHtml(block.id)}"` : ''}>
             ${block.title ? `<h2 class="rich-block__title">${escapeHtml(block.title)}</h2>` : ''}
             <div class="class-tree" data-class-tree data-active-tab="${escapeHtml(activeTabId)}">
                 <div class="class-tree__tabs" role="tablist" aria-label="Расы">
@@ -876,7 +887,7 @@ const renderImageMapBlock = (block) => {
     }
 
     return `
-        <section class="wiki-panel rich-block rich-block--image-map">
+        <section class="wiki-panel rich-block rich-block--image-map"${block.id ? ` id="${escapeHtml(block.id)}"` : ''}>
             ${block.title ? `<h2 class="rich-block__title">${escapeHtml(block.title)}</h2>` : ''}
             <div class="npc-map-container">
                 <div class="npc-map-stage">
@@ -1152,7 +1163,7 @@ const renderQuestGuideBlock = (block) => {
         : '';
 
     return `
-        <section class="wiki-panel rich-block rich-block--quest-guide">
+        <section class="wiki-panel rich-block rich-block--quest-guide"${block.id ? ` id="${escapeHtml(block.id)}"` : ''}>
             <div class="quest-guide">
                 ${heroHtml}
                 ${overviewHtml}
@@ -1244,7 +1255,7 @@ const renderSectionOverviewCards = (database, section) => {
     const cards = (section.groups || [])
         .map((group) => {
             const landingArticle = getGroupLandingArticle(database, section, group);
-            const href = buildSectionUrl(section.id, group.id);
+            const href = buildGroupNavigationUrl(database, section, group);
             const summary = landingArticle?.summary || group.description || section.description || '';
             const iconLabel = String(group.label || section.title || '')
                 .split(/\s+/)
@@ -1410,10 +1421,11 @@ const renderBlock = (block) => {
     }
 
     const title = block.title ? `<h2 class="rich-block__title">${escapeHtml(block.title)}</h2>` : '';
+    const blockAnchor = block.id ? ` id="${escapeHtml(block.id)}"` : '';
 
     if (block.type === 'prose') {
         return `
-            <section class="wiki-panel rich-block rich-block--prose">
+            <section class="wiki-panel rich-block rich-block--prose"${blockAnchor}>
                 ${title}
                 <div class="wiki-text">
                     ${(block.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join('')}
@@ -1426,7 +1438,7 @@ const renderBlock = (block) => {
         const ordered = block.type === 'steps' || block.style === 'ordered';
         const tag = ordered ? 'ol' : 'ul';
         return `
-            <section class="wiki-panel rich-block rich-block--list">
+            <section class="wiki-panel rich-block rich-block--list"${blockAnchor}>
                 ${title}
                 <${tag} class="wiki-list ${ordered ? 'wiki-list--ordered' : ''}">
                     ${(block.items || []).map((item) => `<li class="wiki-list__item">${escapeHtml(item)}</li>`).join('')}
@@ -1437,7 +1449,7 @@ const renderBlock = (block) => {
 
     if (block.type === 'table') {
         return `
-            <section class="wiki-panel rich-block rich-block--table">
+            <section class="wiki-panel rich-block rich-block--table"${blockAnchor}>
                 ${title}
                 ${renderRichTable(block)}
             </section>
@@ -1446,7 +1458,7 @@ const renderBlock = (block) => {
 
     if (block.type === 'callout') {
         return `
-            <section class="wiki-callout wiki-callout--${escapeHtml(block.tone || 'info')}">
+            <section class="wiki-callout wiki-callout--${escapeHtml(block.tone || 'info')}"${blockAnchor}>
                 ${title}
                 ${block.text ? `<p>${escapeHtml(block.text)}</p>` : ''}
                 ${
@@ -1461,7 +1473,7 @@ const renderBlock = (block) => {
     if (block.type === 'media') {
         const items = block.items || [];
         return `
-            <section class="wiki-panel rich-block rich-block--media">
+            <section class="wiki-panel rich-block rich-block--media"${blockAnchor}>
                 ${title}
                 <div class="wiki-media-grid${items.length === 1 ? ' wiki-media-grid--single' : ''}">
                     ${items
@@ -1481,7 +1493,7 @@ const renderBlock = (block) => {
 
     if (block.type === 'html') {
         return `
-            <section class="wiki-panel rich-block rich-block--html">
+            <section class="wiki-panel rich-block rich-block--html"${blockAnchor}>
                 ${title}
                 <div class="wiki-html">${block.html || ''}</div>
             </section>

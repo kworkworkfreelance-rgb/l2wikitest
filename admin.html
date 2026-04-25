@@ -15,8 +15,8 @@
                 <span class="admin-auth__eyebrow">Защищенный вход</span>
                 <h1 class="admin-auth__title">Авторизация в админ-панель</h1>
                 <p class="admin-auth__text">
-                    Логин и пароль берутся из <code>.env</code> или <code>.env.local</code>. Если пароль уже меняли через
-                    админку, будет использовано сохраненное значение из storage.
+                    Логин и пароль берутся из <code>.env</code> или <code>.env.local</code>. Если задан <code>ADMIN_PASSWORD</code>,
+                    именно он имеет приоритет и используется для всех пользователей после перезапуска сервиса.
                 </p>
 
                 <form id="adminLoginForm" class="admin-auth__form">
@@ -333,7 +333,7 @@
                                     </label>
                                     <label class="admin-field">
                                         <span>Группы раздела</span>
-                                        <textarea id="sectionGroups" name="groups" rows="6" placeholder="profession | Профессии | Квесты на 1, 2, 3 и 4 профессии"></textarea>
+                                        <textarea id="sectionGroups" name="groups" rows="6" placeholder="profession | Профессии | Квесты на 1, 2, 3 и альтернативную профессию"></textarea>
                                     </label>
                                 </div>
 

@@ -384,7 +384,66 @@ const loadStaticSeedCandidate = (filePath, label, options = {}) => {
     }
 };
 
+const getCanonicalTimestamp = (metaPath, canonicalPath) => {
+    if (metaPath && fs.existsSync(metaPath)) {
+        try {
+            const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            const timestamp = Date.parse(meta?.updatedAt || '');
+
+            if (Number.isFinite(timestamp)) {
+                return timestamp;
+            }
+        } catch (error) {
+            console.warn(`[boot] Failed to parse meta timestamp from ${metaPath}: ${error.message}`);
+        }
+    }
+
+    if (canonicalPath && fs.existsSync(canonicalPath)) {
+        try {
+            return fs.statSync(canonicalPath).mtimeMs;
+        } catch {}
+    }
+
+    return 0;
+};
+
+const syncAppCanonicalToStorageIfNewer = () => {
+    if (!fs.existsSync(APP_CANONICAL_PATH) || isGitLfsPointerFile(APP_CANONICAL_PATH)) {
+        return;
+    }
+
+    const appTimestamp = getCanonicalTimestamp(APP_CANONICAL_META_PATH, APP_CANONICAL_PATH);
+    const storageTimestamp = getCanonicalTimestamp(STORAGE_CANONICAL_META_PATH, STORAGE_CANONICAL_PATH);
+    const shouldSync = !fs.existsSync(STORAGE_CANONICAL_PATH) || appTimestamp > storageTimestamp;
+
+    if (!shouldSync) {
+        return;
+    }
+
+    ensureDir(path.dirname(STORAGE_CANONICAL_PATH));
+    fs.copyFileSync(APP_CANONICAL_PATH, STORAGE_CANONICAL_PATH);
+
+    if (fs.existsSync(APP_CANONICAL_META_PATH)) {
+        fs.copyFileSync(APP_CANONICAL_META_PATH, STORAGE_CANONICAL_META_PATH);
+    } else {
+        writeFileAtomic(STORAGE_CANONICAL_META_PATH, JSON.stringify(buildMeta(loadJsonCandidate(APP_CANONICAL_PATH, 'app canonical copy')?.data || createEmptyDatabase())));
+    }
+
+    if (STATIC_PUBLISH_ENABLED && fs.existsSync(APP_STATIC_DATA_PATH)) {
+        ensureDir(path.dirname(STATIC_DATA_PATH));
+        fs.copyFileSync(APP_STATIC_DATA_PATH, STATIC_DATA_PATH);
+    }
+
+    console.log(
+        `[boot] Synced app canonical into storage because app data is newer (${new Date(appTimestamp).toISOString()} > ${
+            storageTimestamp ? new Date(storageTimestamp).toISOString() : 'missing storage snapshot'
+        })`
+    );
+};
+
 const loadDatabaseFromDisk = () => {
+    syncAppCanonicalToStorageIfNewer();
+
     const loaders = [
         () => loadJsonCandidate(STORAGE_CANONICAL_PATH, 'storage canonical'),
         () => loadJsonCandidate(APP_CANONICAL_PATH, 'app canonical'),
