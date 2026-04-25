@@ -103,7 +103,9 @@ const buildVirtualGroup = (section, groupId = '') => {
         return null;
     }
 
-    const professionGroups = (section.groups || []).filter((group) => /^profession-\d+$/.test(group.id));
+    const professionGroups = (section.groups || []).filter(
+        (group) => /^profession-\d+$/.test(group.id) || group.id === 'alternative-profession'
+    );
 
     if (!professionGroups.length) {
         return null;
