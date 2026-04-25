@@ -1,0 +1,19 @@
+services:
+    - type: web
+      name: l2wiki
+      runtime: node
+      plan: starter
+      buildCommand: npm install
+      startCommand: npm start
+      healthCheckPath: /api/admin/session
+      envVars:
+          - key: ADMIN_USERNAME
+            value: admin
+          - key: ADMIN_PASSWORD
+            sync: false
+          - key: L2WIKI_STORAGE_DIR
+            value: /var/data/l2wiki
+      disk:
+          name: data
+          mountPath: /var/data
+          sizeGB: 10

@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Админ-панель L2Wiki.Su для управления canonical JSON, rich-контентом и публикацией статического seed." />
+        <meta name="robots" content="noindex, nofollow" />
+        <title>Админ-панель | L2Wiki.Su</title>
+        <link rel="stylesheet" href="./assets/css/admin.css" />
+        <link rel="stylesheet" href="./assets/css/admin-rich.css?v=20260411-map-seo-v2" />
+    </head>
+    <body class="admin-page">
+        <section class="admin-auth" id="adminAuthGate">
+            <div class="admin-auth__card">
+                <span class="admin-auth__eyebrow">Защищенный вход</span>
+                <h1 class="admin-auth__title">Авторизация в админ-панель</h1>
+                <p class="admin-auth__text">
+                    Логин и пароль берутся из <code>.env</code> или <code>.env.local</code>. Если пароль уже меняли через
+                    админку, будет использовано сохраненное значение из storage.
+                </p>
+
+                <form id="adminLoginForm" class="admin-auth__form">
+                    <label class="admin-field">
+                        <span>Логин</span>
+                        <input id="adminLoginUsername" type="text" value="admin" autocomplete="username" required />
+                    </label>
+
+                    <label class="admin-field">
+                        <span>Пароль</span>
+                        <input id="adminLoginPassword" type="password" autocomplete="current-password" required />
+                    </label>
+
+                    <p id="adminLoginError" class="admin-auth__error" hidden></p>
+
+                    <div class="admin-auth__actions">
+                        <button class="admin-button" type="submit">Войти в CMS</button>
+                        <a class="admin-button admin-button--ghost" href="/index.html">На сайт</a>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <div class="admin-shell" id="adminShell" hidden>
+            <aside class="admin-sidebar">
+                <a class="admin-brand" href="/index.html">
+                    <span class="admin-brand__eyebrow">Canonical source-of-truth</span>
+                    <strong class="admin-brand__title">L2Wiki.Su CMS</strong>
+                    <span class="admin-brand__text">JSON snapshot, static seed, backups и rich-рендер в одном контуре</span>
+                </a>
+
+                <nav class="admin-nav" aria-label="Навигация по админке">
+                    <button class="admin-nav__button is-active" type="button" data-panel-button="dashboard">Обзор</button>
+                    <button class="admin-nav__button" type="button" data-panel-button="articles">Статьи</button>
+                    <button class="admin-nav__button" type="button" data-panel-button="sections">Разделы</button>
+                    <button class="admin-nav__button" type="button" data-panel-button="site">Сайт</button>
+                    <button class="admin-nav__button" type="button" data-panel-button="backup">Бэкапы</button>
+                </nav>
+
+                <section class="admin-sidebar__sections">
+                    <div class="admin-sidebar__head">
+                        <h2>Разделы базы</h2>
+                        <span id="adminSidebarCount">0</span>
+                    </div>
+                    <div id="adminSidebarSections" class="admin-sidebar__list"></div>
+                </section>
+            </aside>
+
+            <main class="admin-main">
+                <header class="admin-header">
+                    <div>
+                        <span class="admin-header__eyebrow">Lineage II knowledge base</span>
+                        <h1 class="admin-header__title">Панель управления rich-контентом</h1>
+                        <p class="admin-header__text" id="adminUpdatedAt">Последняя публикация: --</p>
+                    </div>
+
+                    <div class="admin-header__actions">
+                        <a class="admin-button admin-button--ghost" href="/index.html">Открыть сайт</a>
+                        <button class="admin-button" type="button" id="adminExportButton">Экспорт JSON</button>
+                        <label class="admin-button admin-button--ghost" for="adminImportInput">Импорт JSON</label>
+                        <input id="adminImportInput" type="file" accept=".json,application/json" hidden />
+                        <button class="admin-button admin-button--ghost" type="button" id="adminLogoutButton">Выйти</button>
+                        <button class="admin-button admin-button--danger" type="button" id="adminResetButton">Перезагрузить canonical</button>
+                    </div>
+                </header>
+
+                <section class="admin-panel is-active" data-panel="dashboard">
+                    <div class="admin-stats" id="adminStats"></div>
+
+                    <div class="admin-grid admin-grid--two">
+                        <article class="admin-card">
+                            <div class="admin-card__head">
+                                <h2 class="admin-card__title">Структура базы</h2>
+                                <span class="admin-card__meta">Разделы, группы и section landing layouts</span>
+                            </div>
+                            <div id="adminDashboardSections" class="admin-stack"></div>
+                        </article>
+
+                        <article class="admin-card">
+                            <div class="admin-card__head">
+                                <h2 class="admin-card__title">Последние материалы</h2>
+                                <span class="admin-card__meta">Быстрый переход к rich-редактированию</span>
+                            </div>
+                            <div id="adminDashboardArticles" class="admin-stack"></div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="admin-panel" data-panel="articles">
+                    <div class="admin-panel__head">
+                        <div>
+                            <h2 class="admin-panel__title">Управление статьями</h2>
+                            <p class="admin-panel__text">Редактируйте короткие summary-поля, инфобоксы, aliases и блоки контента в одном месте.</p>
+                        </div>
+                        <button class="admin-button" type="button" id="adminNewArticleButton">Новая статья</button>
+                    </div>
+
+                    <div class="admin-grid admin-grid--content">
+                        <article class="admin-card">
+                            <div class="admin-toolbar">
+                                <label class="admin-field">
+                                    <span>Поиск</span>
+                                    <input id="articleSearchInput" type="search" placeholder="Например: noblesse, mammon, gludio" />
+                                </label>
+                                <label class="admin-field">
+                                    <span>Раздел</span>
+                                    <select id="articleSectionFilter"></select>
+                                </label>
+                            </div>
+                            <div id="articleList" class="admin-list"></div>
+                        </article>
+
+                        <article class="admin-card">
+                            <div class="admin-card__head">
+                                <h3 class="admin-card__title" id="articleFormTitle">Новая статья</h3>
+                                <span class="admin-card__meta">Blocks JSON используется как основной rich-слой; старые поля остаются совместимыми.</span>
+                            </div>
+
+                            <form id="articleForm" class="admin-form">
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>ID статьи</span>
+                                        <input id="articleId" name="id" type="text" placeholder="quest-profession-first" required />
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Порядок</span>
+                                        <input id="articleOrder" name="order" type="number" min="0" step="1" value="9999" />
+                                    </label>
+                                </div>
+
+                                <label class="admin-field">
+                                    <span>Название</span>
+                                    <input id="articleTitle" name="title" type="text" placeholder="Квесты на первую профессию" required />
+                                </label>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Раздел</span>
+                                        <select id="articleSection" name="section" required></select>
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Группа</span>
+                                        <select id="articleGroup" name="group" required></select>
+                                    </label>
+                                </div>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Eyebrow</span>
+                                        <input id="articleEyebrow" name="eyebrow" type="text" placeholder="Квесты / Профессии" />
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Layout</span>
+                                        <input id="articleLayout" name="layout" type="text" placeholder="article-detail" />
+                                    </label>
+                                </div>
+
+                                <label class="admin-field">
+                                    <span>Краткое описание</span>
+                                    <textarea id="articleSummary" name="summary" rows="3" placeholder="Коротко: о чем материал и зачем он нужен."></textarea>
+                                </label>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Meta</span>
+                                        <textarea id="articleMeta" name="meta" rows="6" placeholder="Уровень | 18+&#10;Стартовый NPC | Master Auron"></textarea>
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Aliases</span>
+                                        <textarea id="articleAliases" name="aliases" rows="6" placeholder="Path of the Warrior&#10;Путь Воиителя&#10;warrior quest"></textarea>
+                                    </label>
+                                </div>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Введение</span>
+                                        <textarea id="articleIntro" name="intro" rows="6" placeholder="Каждая строка станет отдельным абзацем."></textarea>
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Checklist</span>
+                                        <textarea id="articleChecklist" name="checklist" rows="6" placeholder="Каждая строка — отдельный пункт."></textarea>
+                                    </label>
+                                </div>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Steps</span>
+                                        <textarea id="articleSteps" name="steps" rows="6" placeholder="Каждая строка — шаг."></textarea>
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Rewards / итог</span>
+                                        <textarea id="articleRewards" name="rewards" rows="6" placeholder="Каждая строка — выгода или награда."></textarea>
+                                    </label>
+                                </div>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Tips</span>
+                                        <textarea id="articleTips" name="tips" rows="5" placeholder="Каждая строка — совет."></textarea>
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Связанные статьи</span>
+                                        <textarea id="articleRelated" name="related" rows="5" placeholder="id через запятую или с новой строки"></textarea>
+                                    </label>
+                                </div>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Sidebar facts</span>
+                                        <textarea id="articleSidebarFacts" name="sidebarFacts" rows="8" placeholder="Уровень | 18+&#10;Стартовая локация | Gludio Territory"></textarea>
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Blocks JSON</span>
+                                        <textarea
+                                            id="articleBlocks"
+                                            name="blocks"
+                                            rows="12"
+                                            placeholder='[{"type":"prose","title":"Кратко по теме","paragraphs":["..."]},{"type":"table","title":"Таблица","columns":[{"key":"name","label":"Название"}],"rows":[{"cells":[{"value":"..."},{"value":"18+"}]}]}]'
+                                        ></textarea>
+                                    </label>
+                                </div>
+
+                                <label class="admin-field">
+                                    <span>Quest guide JSON</span>
+                                    <textarea
+                                        id="articleQuestGuide"
+                                        name="questGuide"
+                                        rows="14"
+                                        placeholder='{"heroMedia":[{"src":"/assets/img/icons/quest.jpg","caption":"Quest screenshot"}],"overviewParagraphs":["About the quest..."],"prepItems":[{"text":"Prepare teleport scrolls"}],"steps":[{"text":"Talk to NPC","npc":"Hardin","location":"Hardin Academy"}],"rewards":[{"text":"EXP and SP"}],"notes":["Best completed with buffs"],"relatedQuestIds":["subclass-quest"]}'
+                                    ></textarea>
+                                </label>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Source URL</span>
+                                        <input id="articleSourceUrl" name="sourceUrl" type="url" placeholder="https://web.archive.org/..." />
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Archive timestamp</span>
+                                        <input id="articleSourceArchivedAt" name="sourceArchivedAt" type="text" placeholder="20220628210720" />
+                                    </label>
+                                </div>
+
+                                <div class="admin-form__grid admin-form__grid--three">
+                                    <label class="admin-field">
+                                        <span>Source path</span>
+                                        <input id="articleSourcePath" name="sourcePath" type="text" placeholder="quests/item/2953-path-of-the-warrior" />
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Snapshot</span>
+                                        <input id="articleSourceSnapshot" name="sourceSnapshot" type="text" placeholder="data/raw/archive/..." />
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Source type</span>
+                                        <input id="articleSourceType" name="sourceType" type="text" placeholder="wayback" />
+                                    </label>
+                                </div>
+
+                                <div class="admin-actions">
+                                    <button class="admin-button admin-button--ghost" type="button" id="articleResetButton">Очистить форму</button>
+                                    <button class="admin-button" type="submit">Сохранить статью</button>
+                                </div>
+                            </form>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="admin-panel" data-panel="sections">
+                    <div class="admin-panel__head">
+                        <div>
+                            <h2 class="admin-panel__title">Управление разделами</h2>
+                            <p class="admin-panel__text">Здесь настраивается меню, landing-блоки, dense catalog tables и навигация по разделам.</p>
+                        </div>
+                        <button class="admin-button" type="button" id="adminNewSectionButton">Новый раздел</button>
+                    </div>
+
+                    <div class="admin-grid admin-grid--content">
+                        <article class="admin-card">
+                            <div id="sectionList" class="admin-list"></div>
+                        </article>
+
+                        <article class="admin-card">
+                            <div class="admin-card__head">
+                                <h3 class="admin-card__title" id="sectionFormTitle">Новый раздел</h3>
+                                <span class="admin-card__meta">Группы задаются построчно в формате: id | Название | Описание</span>
+                            </div>
+
+                            <form id="sectionForm" class="admin-form">
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>ID раздела</span>
+                                        <input id="sectionId" name="id" type="text" placeholder="quests" required />
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Порядок</span>
+                                        <input id="sectionOrder" name="order" type="number" min="0" step="1" value="9999" />
+                                    </label>
+                                </div>
+
+                                <label class="admin-field">
+                                    <span>Название</span>
+                                    <input id="sectionTitle" name="title" type="text" placeholder="Квесты" required />
+                                </label>
+
+                                <label class="admin-field">
+                                    <span>Описание</span>
+                                    <textarea id="sectionDescription" name="description" rows="4" placeholder="Коротко опишите, что хранится в разделе."></textarea>
+                                </label>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Статистика блока</span>
+                                        <textarea id="sectionStats" name="stats" rows="6" placeholder="Материалов | 27&#10;Групп | 4&#10;Фокус | Прогресс"></textarea>
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Группы раздела</span>
+                                        <textarea id="sectionGroups" name="groups" rows="6" placeholder="profession | Профессии | Квесты на 1, 2, 3 и 4 профессии"></textarea>
+                                    </label>
+                                </div>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Landing layout</span>
+                                        <input id="sectionLandingLayout" name="landingLayout" type="text" placeholder="catalog" />
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Landing sidebar facts</span>
+                                        <textarea id="sectionLandingSidebarFacts" name="landingSidebarFacts" rows="6" placeholder="Каталогов | 12&#10;Тип | Справочник"></textarea>
+                                    </label>
+                                </div>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Landing blocks JSON</span>
+                                        <textarea
+                                            id="sectionLandingBlocks"
+                                            name="landingBlocks"
+                                            rows="10"
+                                            placeholder='[{"type":"prose","title":"Введение","paragraphs":["..."]},{"type":"table","title":"Таблица","columns":[{"key":"name","label":"Название"}],"rows":[{"cells":[{"value":"..."},{"value":"18+"}]}]}]'
+                                        ></textarea>
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Catalog columns JSON</span>
+                                        <textarea
+                                            id="sectionCatalogColumns"
+                                            name="catalogColumns"
+                                            rows="10"
+                                            placeholder='[{"key":"name","label":"Название"},{"key":"level","label":"Уровень","align":"center"}]'
+                                        ></textarea>
+                                    </label>
+                                </div>
+
+                                <label class="admin-field">
+                                    <span>Catalog rows JSON</span>
+                                    <textarea
+                                        id="sectionCatalogRows"
+                                        name="catalogRows"
+                                        rows="12"
+                                        placeholder='[{"cells":[{"value":"Human Fighter"},{"value":"Path of the Warrior","href":"/pages/article.html?article=quest-path-of-the-warrior"},{"value":"18+"}]}]'
+                                    ></textarea>
+                                </label>
+
+                                <div class="admin-actions">
+                                    <button class="admin-button admin-button--ghost" type="button" id="sectionResetButton">Очистить форму</button>
+                                    <button class="admin-button" type="submit">Сохранить раздел</button>
+                                </div>
+                            </form>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="admin-panel" data-panel="site">
+                    <div class="admin-grid admin-grid--two">
+                        <article class="admin-card">
+                            <div class="admin-card__head">
+                                <h2 class="admin-card__title">Настройки сайта</h2>
+                                <span class="admin-card__meta">Общие данные проекта, которые используются на всех страницах и в static snapshot</span>
+                            </div>
+
+                            <form id="siteForm" class="admin-form">
+                                <label class="admin-field">
+                                    <span>Название сайта</span>
+                                    <input id="siteName" name="name" type="text" placeholder="L2Wiki.Su" required />
+                                </label>
+
+                                <label class="admin-field">
+                                    <span>Подзаголовок</span>
+                                    <textarea id="siteSubtitle" name="subtitle" rows="4" placeholder="База знаний по Lineage II"></textarea>
+                                </label>
+
+                                <label class="admin-field">
+                                    <span>Ads JSON</span>
+                                    <textarea
+                                        id="siteAds"
+                                        name="ads"
+                                        rows="16"
+                                        placeholder='{"homeHeader":{"enabled":true,"label":"Рекламный блок (728x90)","text":"Ваш баннер"},"articleTop":{"enabled":true,"html":"<a href=\"https://example.com\"><img src=\"/assets/img/ad.jpg\" alt=\"Ad\"></a>"}}'
+                                    ></textarea>
+                                </label>
+
+                                <div class="admin-actions">
+                                    <button class="admin-button" type="submit">Сохранить настройки</button>
+                                </div>
+                            </form>
+                        </article>
+
+                        <article class="admin-card">
+                            <div class="admin-card__head">
+                                <h2 class="admin-card__title">Как это работает</h2>
+                                <span class="admin-card__meta">Server-backed publish pipeline</span>
+                            </div>
+                            <div class="admin-note">
+                                <p>Админка редактирует canonical JSON-снимок проекта, а не браузерный storage.</p>
+                                <p>Каждая публикация запускает один цикл: валидация, backup, генерация `static-data.js`, синхронизация SQLite.</p>
+                                <p>Публичный сайт всегда читает встроенный static seed, поэтому контент не теряется после очистки браузера или перезапуска сервера.</p>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div class="admin-grid admin-grid--two">
+                        <article class="admin-card">
+                            <div class="admin-card__head">
+                                <h2 class="admin-card__title">Безопасность</h2>
+                                <span class="admin-card__meta">Смена пароля администратора без ручной правки файлов</span>
+                            </div>
+
+                            <form id="securityForm" class="admin-form">
+                                <label class="admin-field">
+                                    <span>Текущий логин</span>
+                                    <input id="securityUsername" type="text" readonly />
+                                </label>
+
+                                <label class="admin-field">
+                                    <span>Текущий пароль</span>
+                                    <input id="securityCurrentPassword" type="password" autocomplete="current-password" required />
+                                </label>
+
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Новый пароль</span>
+                                        <input id="securityNewPassword" type="password" autocomplete="new-password" minlength="4" required />
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Подтверждение</span>
+                                        <input id="securityConfirmPassword" type="password" autocomplete="new-password" minlength="4" required />
+                                    </label>
+                                </div>
+
+                                <div class="admin-actions">
+                                    <button class="admin-button" type="submit">Обновить пароль</button>
+                                </div>
+                            </form>
+                        </article>
+
+                        <article class="admin-card">
+                            <div class="admin-card__head">
+                                <h2 class="admin-card__title">Конструктор страницы «Контакты»</h2>
+                                <span class="admin-card__meta">Отдельный редактор для свободной contact-страницы без JSON и ручной верстки</span>
+                            </div>
+
+                            <form id="contactsBuilderForm" class="admin-form">
+                                <div class="admin-form__grid admin-form__grid--two">
+                                    <label class="admin-field">
+                                        <span>Заголовок страницы</span>
+                                        <input id="contactsTitle" type="text" placeholder="Контакты" />
+                                    </label>
+                                    <label class="admin-field">
+                                        <span>Eyebrow</span>
+                                        <input id="contactsEyebrow" type="text" placeholder="Контакты" />
+                                    </label>
+                                </div>
+
+                                <label class="admin-field">
+                                    <span>Подзаголовок</span>
+                                    <textarea id="contactsSummary" rows="3" placeholder="Короткое описание над основным контентом страницы."></textarea>
+                                </label>
+
+                                <label class="admin-field">
+                                    <span>Заголовок вступления</span>
+                                    <input id="contactsIntroTitle" type="text" placeholder="Связь с нами" />
+                                </label>
+
+                                <label class="admin-field">
+                                    <span>Абзацы вступления</span>
+                                    <textarea id="contactsIntroParagraphs" rows="5" placeholder="Каждая строка станет отдельным абзацем."></textarea>
+                                </label>
+
+                                <label class="admin-field">
+                                    <span>Заголовок блока с каналами</span>
+                                    <input id="contactsTableTitle" type="text" placeholder="Каналы связи" />
+                                </label>
+
+                                <div class="admin-card admin-card--nested">
+                                    <div class="admin-card__head admin-card__head--compact">
+                                        <div>
+                                            <h3 class="admin-card__title">Карточки контактов</h3>
+                                            <span class="admin-card__meta">Каждая карточка появится на странице как отдельный канал связи.</span>
+                                        </div>
+                                        <button class="admin-button admin-button--ghost admin-button--small" type="button" id="contactsAddRowButton">Добавить канал</button>
+                                    </div>
+                                    <div id="contactsRows" class="admin-contact-rows"></div>
+                                </div>
+
+                                <div class="admin-actions">
+                                    <a class="admin-button admin-button--ghost" href="/pages/article.html?article=contacts" target="_blank" rel="noreferrer">Открыть страницу</a>
+                                    <button class="admin-button" type="submit">Сохранить контакты</button>
+                                </div>
+                            </form>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="admin-panel" data-panel="backup">
+                    <div class="admin-grid admin-grid--two">
+                        <article class="admin-card">
+                            <div class="admin-card__head">
+                                <h2 class="admin-card__title">Резервная копия</h2>
+                                <span class="admin-card__meta">Экспорт и импорт единого rich-формата</span>
+                            </div>
+                            <div class="admin-note">
+                                <p>Экспорт создает один JSON-файл со всей rich-базой знаний.</p>
+                                <p>Импорт полностью заменяет canonical snapshot и заново публикует статический seed.</p>
+                                <p>Автобэкапы сохраняются внутри проекта после каждой публикации.</p>
+                            </div>
+                        </article>
+
+                        <article class="admin-card">
+                            <div class="admin-card__head">
+                                <h2 class="admin-card__title">Сводка базы</h2>
+                                <span class="admin-card__meta">Текущий snapshot и список последних backup-файлов</span>
+                            </div>
+                            <div id="backupInfo" class="admin-stack"></div>
+                        </article>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <div id="adminToast" class="admin-toast" role="status" aria-live="polite"></div>
+
+        <script>
+            (function () {
+                const authGate = document.getElementById('adminAuthGate');
+                const adminShell = document.getElementById('adminShell');
+                const loginForm = document.getElementById('adminLoginForm');
+                const loginUsername = document.getElementById('adminLoginUsername');
+                const loginPassword = document.getElementById('adminLoginPassword');
+                const loginError = document.getElementById('adminLoginError');
+                const logoutButton = document.getElementById('adminLogoutButton');
+                let adminAppLoaded = false;
+                let adminAppPromise = null;
+
+                const request = async (url, options = {}) => {
+                    const response = await fetch(url, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(options.headers || {}),
+                        },
+                        credentials: 'same-origin',
+                        ...options,
+                    });
+
+                    const text = await response.text();
+                    let payload = null;
+
+                    if (text) {
+                        try {
+                            payload = JSON.parse(text);
+                        } catch (error) {
+                            payload = text;
+                        }
+                    }
+
+                    if (!response.ok) {
+                        const htmlLike = typeof payload === 'string' && /<!doctype html|<html[\s>]/i.test(payload);
+                        throw new Error(
+                            (htmlLike &&
+                                (response.status === 413
+                                    ? 'Сервер отклонил слишком большой запрос. Проверьте client_max_body_size в nginx.'
+                                    : 'Сервер вернул HTML-страницу ошибки. Проверьте логи сервиса и nginx.')) ||
+                                (payload && payload.error) ||
+                                payload ||
+                                `Request failed with status ${response.status}`
+                        );
+                    }
+
+                    return payload;
+                };
+
+                const setView = (authenticated, errorMessage = '') => {
+                    authGate.hidden = authenticated;
+                    adminShell.hidden = !authenticated;
+
+                    if (loginError) {
+                        loginError.hidden = !errorMessage;
+                        loginError.textContent = errorMessage || '';
+                    }
+                };
+
+                const loadScript = (src) =>
+                    new Promise((resolve, reject) => {
+                        const existing = document.querySelector(`script[src="${src}"]`);
+
+                        if (existing) {
+                            if (existing.dataset.loaded === 'true') {
+                                resolve();
+                                return;
+                            }
+
+                            existing.addEventListener('load', () => resolve(), { once: true });
+                            existing.addEventListener('error', () => reject(new Error(`Не удалось загрузить ${src}`)), { once: true });
+                            return;
+                        }
+
+                        const script = document.createElement('script');
+                        script.src = src;
+                        script.charset = 'utf-8';
+                        script.addEventListener(
+                            'load',
+                            () => {
+                                script.dataset.loaded = 'true';
+                                resolve();
+                            },
+                            { once: true }
+                        );
+                        script.addEventListener('error', () => reject(new Error(`Не удалось загрузить ${src}`)), { once: true });
+                        document.body.appendChild(script);
+                    });
+
+                const loadAdminApp = async () => {
+                    if (adminAppLoaded) {
+                        return adminAppPromise;
+                    }
+
+                    adminAppLoaded = true;
+                    adminAppPromise = loadScript('/assets/js/static-data.js?v=20260413-admin-shell-v5')
+                        .then(() => loadScript('/assets/js/data-store.js?v=20260413-admin-shell-v5'))
+                        .then(() => loadScript('./admin-script.js?v=20260413-admin-shell-v5'))
+                        .catch((error) => {
+                            adminAppLoaded = false;
+                            throw error;
+                        });
+
+                    return adminAppPromise;
+                };
+
+                const syncSession = async (message = '') => {
+                    try {
+                        const session = await request('/api/admin/session');
+
+                        if (session.authenticated) {
+                            window.L2WikiAdminSession = session;
+                            setView(true);
+                            await loadAdminApp();
+                            return;
+                        }
+
+                        setView(false, message);
+                    } catch (error) {
+                        setView(false, error.message || 'Не удалось проверить сессию администратора.');
+                    }
+                };
+
+                loginForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+
+                    try {
+                        await request('/api/admin/login', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                username: String(loginUsername.value || '').trim(),
+                                password: String(loginPassword.value || ''),
+                            }),
+                        });
+
+                        window.L2WikiAdminSession = {
+                            authenticated: true,
+                            username: String(loginUsername.value || '').trim(),
+                        };
+                        setView(true);
+                        await loadAdminApp();
+                    } catch (error) {
+                        setView(false, error.message || 'Неверный логин или пароль.');
+                    }
+                });
+
+                if (logoutButton) {
+                    logoutButton.addEventListener('click', async () => {
+                        try {
+                            await request('/api/admin/logout', {
+                                method: 'POST',
+                                body: JSON.stringify({}),
+                            });
+                        } catch (error) {
+                            console.error('[AdminAuth]', error);
+                        } finally {
+                            window.location.reload();
+                        }
+                    });
+                }
+
+                const initialError = new URLSearchParams(window.location.search).get('unauthorized')
+                    ? 'Требуется повторный вход в админ-панель.'
+                    : '';
+
+                syncSession(initialError);
+            })();
+        </script>
+    </body>
+</html>

@@ -1,0 +1,139 @@
+/* ========================================
+   RECLAME BLOCKS - Advertising placeholders
+   ======================================== */
+
+/* Base ad block styles */
+.ad-block {
+    width: 100%;
+    min-height: 100px;
+    margin: 20px 0;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(30, 41, 59, 0.4) 100%);
+    border: 2px dashed rgba(148, 163, 184, 0.3);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: visible;
+    transition: all 0.3s ease;
+    z-index: 1;
+}
+
+.ad-block:hover {
+    border-color: rgba(148, 163, 184, 0.5);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.5) 100%);
+}
+
+.ad-block__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(148, 163, 184, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: center;
+    user-select: none;
+}
+
+.ad-block__label::before {
+    content: '📢 ';
+    margin-right: 8px;
+}
+
+/* Header ad - below search */
+.ad-header {
+    margin-top: 0;
+    margin-bottom: 20px;
+    min-height: 90px;
+}
+
+/* Sidebar ad */
+.ad-sidebar {
+    margin: 20px 0;
+    min-height: 250px;
+}
+
+/* Content top ad */
+.ad-content-top {
+    margin-bottom: 30px;
+    min-height: 120px;
+}
+
+/* Content bottom ad */
+.ad-content-bottom {
+    margin-top: 30px;
+    min-height: 150px;
+}
+
+/* Between sections ad */
+.ad-section-break {
+    margin: 40px 0;
+    min-height: 120px;
+}
+
+/* Footer ad */
+.ad-footer {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    min-height: 100px;
+}
+
+/* Article page ad */
+.ad-article-top,
+.ad-article-bottom {
+    margin: 20px 0;
+    min-height: 120px;
+}
+
+/* Article inline ad */
+.ad-article-inline {
+    margin: 30px 0;
+    min-height: 100px;
+}
+
+/* Sidebar ad when inside main sidebar */
+.sidebar .ad-sidebar {
+    margin: 15px 10px;
+    min-height: 200px;
+}
+
+/* When real ads are inserted, hide the placeholder */
+.ad-block.has-content {
+    border: none;
+    background: transparent;
+    padding: 0;
+    min-height: auto;
+    display: block;
+}
+
+.ad-block.has-content .ad-block__label {
+    display: none;
+}
+
+.ad-block__content {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    justify-items: center;
+}
+
+.ad-block__link {
+    display: block;
+    width: 100%;
+}
+
+.ad-block__media {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+}
+
+.ad-block__text {
+    margin: 0;
+    text-align: center;
+    color: rgba(226, 232, 240, 0.82);
+    font-size: 14px;
+    line-height: 1.55;
+}

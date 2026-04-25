@@ -1,0 +1,656 @@
+.intro {
+    padding-bottom: 46px;
+}
+
+.intro__banners {
+    margin-bottom: 18px;
+}
+
+.intro__banner-list {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.intro__banner-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 130px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.54);
+    border-radius: 22px;
+    padding: 16px;
+    isolation: isolate;
+    color: $white;
+    box-shadow: 0 18px 34px rgba(26, 45, 69, 0.12);
+    transition:
+        transform 0.52s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.52s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.35s ease;
+}
+
+.intro__banner-card::before,
+.intro__banner-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transition:
+        opacity 0.42s ease,
+        transform 0.62s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.intro__banner-card::before {
+    background: linear-gradient(180deg, rgba(10, 19, 33, 0.14) 0%, rgba(10, 18, 30, 0.76) 100%);
+}
+
+.intro__banner-card::after {
+    background: linear-gradient(125deg, rgba(11, 121, 207, 0.72) 0%, rgba(12, 92, 191, 0.48) 42%, rgba(8, 36, 78, 0.18) 100%);
+    opacity: 0;
+    transform: translateX(-22px);
+    z-index: 1;
+}
+
+.intro__banner-card:hover,
+.intro__banner-card:focus-visible {
+    transform: translateY(-7px);
+    border-color: rgba(255, 255, 255, 0.84);
+    box-shadow: 0 28px 48px rgba(18, 36, 60, 0.22);
+}
+
+.intro__banner-card:hover::after,
+.intro__banner-card:focus-visible::after {
+    opacity: 0.15 !important;
+    transform: translateX(0);
+}
+
+.intro__banner-title,
+.intro__banner-info {
+    position: relative;
+    z-index: 10 !important;
+    transition:
+        opacity 0.44s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.52s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.intro__banner-title {
+    align-self: flex-end;
+    max-width: 94%;
+    text-align: right;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    line-height: 1.02;
+    opacity: 0;
+    transform: translateX(38px);
+    text-shadow: 0 2px 15px rgba(0, 0, 0, 0.8);
+}
+
+.intro__banner-info {
+    max-width: 84%;
+    margin-top: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.95);
+    opacity: 0;
+    transform: translateX(-38px);
+    text-shadow: 0 2px 15px rgba(0, 0, 0, 0.8);
+}
+
+.intro__banner-card:hover .intro__banner-title,
+.intro__banner-card:focus-visible .intro__banner-title {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.intro__banner-card:hover .intro__banner-info,
+.intro__banner-card:focus-visible .intro__banner-info {
+    opacity: 1;
+    transform: translateX(0);
+    transition-delay: 0.08s;
+}
+
+.intro__banner-card--classes {
+    background:
+        radial-gradient(circle at 22% 34%, rgba(150, 224, 255, 0.78), transparent 18%),
+        linear-gradient(135deg, #ba7750 0%, #83422f 34%, #41598b 74%, #5bb8eb 100%);
+}
+
+.intro__banner-card--catacombs {
+    background:
+        radial-gradient(circle at 56% 72%, rgba(117, 255, 225, 0.22), transparent 20%),
+        linear-gradient(135deg, #345f5d 0%, #1b4b59 44%, #182334 100%);
+}
+
+.intro__banner-card--mammon {
+    background:
+        radial-gradient(circle at 78% 28%, rgba(255, 214, 124, 0.22), transparent 18%),
+        linear-gradient(135deg, #223745 0%, #5a493c 38%, #294151 100%);
+}
+
+.intro__banner-card--spoiler {
+    background:
+        radial-gradient(circle at 36% 30%, rgba(255, 255, 255, 0.34), transparent 18%),
+        linear-gradient(135deg, #d5d4cd 0%, #92a1b0 34%, #c29f86 72%, #94664a 100%);
+}
+
+.intro__layout {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.sidebar,
+.intro__content {
+    border: 1px solid rgba(214, 221, 231, 0.88);
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 18px 36px rgba(25, 47, 75, 0.08);
+}
+
+.sidebar {
+    border-radius: 22px;
+    overflow: hidden;
+}
+
+.sidebar__item {
+    position: relative;
+}
+
+.sidebar__item + .sidebar__item {
+    border-top: 1px solid rgba(217, 224, 234, 0.76);
+}
+
+.sidebar__item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, $accent 0%, #55ccff 100%);
+    opacity: 0;
+    transform: translateY(10px);
+    transition:
+        opacity 0.26s ease,
+        transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sidebar__item--current::before,
+.sidebar__item.is-open::before,
+.sidebar__item:hover::before,
+.sidebar__item:focus-within::before {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.sidebar__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 50px;
+    padding: 0 18px;
+    color: $text-main;
+    font-size: 14px;
+    font-weight: 600;
+    transition:
+        color 0.26s ease,
+        background-color 0.34s ease,
+        padding-left 0.34s ease;
+}
+
+.sidebar__item--current > .sidebar__link,
+.sidebar__item.is-open > .sidebar__link,
+.sidebar__item:hover > .sidebar__link,
+.sidebar__item:focus-within > .sidebar__link {
+    background: linear-gradient(90deg, rgba(11, 121, 207, 0.08) 0%, rgba(11, 121, 207, 0) 100%);
+    color: $accent-dark;
+    padding-left: 24px;
+}
+
+.sidebar__item--has-submenu .arrow {
+    color: #9fb0c2;
+    font-size: 18px;
+    line-height: 1;
+    transition:
+        color 0.26s ease,
+        transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sidebar__item.is-open > .sidebar__link .arrow,
+.sidebar__item:focus-within > .sidebar__link .arrow {
+    color: $accent;
+    transform: rotate(90deg);
+}
+
+.sidebar__submenu {
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 18px;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition:
+        max-height 0.46s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.26s ease,
+        transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        padding-bottom 0.34s ease;
+}
+
+.sidebar__item.is-open .sidebar__submenu,
+.sidebar__item:focus-within .sidebar__submenu {
+    max-height: 220px;
+    padding-bottom: 14px;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.sidebar__submenu-item + .sidebar__submenu-item {
+    margin-top: 8px;
+}
+
+.sidebar__submenu-link {
+    display: block;
+    padding: 7px 0 7px 14px;
+    color: $text-muted;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateX(-14px);
+    transition:
+        color 0.24s ease,
+        opacity 0.34s ease,
+        transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sidebar__item.is-open .sidebar__submenu-link,
+.sidebar__item:focus-within .sidebar__submenu-link {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.sidebar__submenu-item:nth-child(1) .sidebar__submenu-link {
+    transition-delay: 0.03s;
+}
+
+.sidebar__submenu-item:nth-child(2) .sidebar__submenu-link {
+    transition-delay: 0.06s;
+}
+
+.sidebar__submenu-item:nth-child(3) .sidebar__submenu-link {
+    transition-delay: 0.09s;
+}
+
+.sidebar__submenu-item:nth-child(4) .sidebar__submenu-link {
+    transition-delay: 0.12s;
+}
+
+.sidebar__submenu-link:hover {
+    color: $accent;
+}
+
+.intro__content {
+    border-radius: 24px;
+    padding: 20px 22px 24px;
+}
+
+.section-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.section-head__title {
+    flex: 0 0 auto;
+    color: $accent;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1;
+}
+
+.section-head__line {
+    flex: 1 1 auto;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(11, 121, 207, 0.18) 0%, rgba(11, 121, 207, 0.02) 100%);
+}
+
+.quests + .skills,
+.skills + .guides {
+    margin-top: 34px;
+}
+
+.quests__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 30px;
+}
+
+.quests__list + .quests__list {
+    margin-top: 26px;
+}
+
+.quests__item,
+.skills__item,
+.guides__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 34px;
+    padding: 4px 2px;
+    transition: transform 0.28s ease;
+}
+
+.quests__item + .quests__item,
+.skills__item + .skills__item,
+.guides__item + .guides__item {
+    margin-top: 8px;
+}
+
+.icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 8px;
+    color: $white;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.24),
+        0 8px 18px rgba(19, 32, 49, 0.12);
+    transition:
+        transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.36s ease,
+        filter 0.28s ease;
+}
+
+.icon::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 5px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.24), transparent 55%);
+}
+
+.icon--profession-1 {
+    background: linear-gradient(135deg, #7a4f2a 0%, #4a2d17 100%);
+}
+
+.icon--profession-2 {
+    background: linear-gradient(135deg, #507530 0%, #213c11 100%);
+}
+
+.icon--profession-3 {
+    background: linear-gradient(135deg, #3a6bac 0%, #1a325d 100%);
+}
+
+.icon--profession-4 {
+    background: linear-gradient(135deg, #944b2e 0%, #4f2014 100%);
+}
+
+.icon--wolf {
+    background: url('/assets/img/icons/Квест на Волка (Wolf Collar).jpg') center/cover no-repeat;
+}
+
+.icon--bull {
+    background: url('/assets/img/quest-heroes/quest-guide-hero-quest-baby-buffalo.png') center/cover no-repeat;
+}
+
+.icon--bird {
+    background: url('/assets/img/quest-heroes/quest-guide-hero-quest-baby-kookabura.png') center/cover no-repeat;
+}
+
+.icon--tiger {
+    background: url('/assets/img/icons/Квест на Тигра (Baby Cougar).jpg') center/cover no-repeat;
+}
+
+.icon--dragon {
+    background: url('/assets/img/icons/Квест на Дракончика (Dragonflute).jpg') center/cover no-repeat;
+}
+
+.icon--wyvern {
+    background: url('/assets/img/quest-heroes/quest-guide-hero-quest-dragon-bugle.png') center/cover no-repeat;
+}
+
+.icon--pailaka-1 {
+    background: url('/assets/img/icons/Пайлака - Песня льда и огня.jpg') center/cover no-repeat;
+}
+
+.icon--pailaka-2 {
+    background: url('/assets/img/icons/Пайлака - Наследие Дьявола.jpg') center/cover no-repeat;
+}
+
+.icon--pailaka-3 {
+    background: url('/assets/img/icons/Пайлака - Раненый Дракон.jpg') center/cover no-repeat;
+}
+
+.icon--freya {
+    background: url('/assets/img/icons/Квесты на Фрею.jpg') center/cover no-repeat;
+}
+
+.icon--antharas {
+    background: url('/assets/img/icons/Квест на Антараса.jpg') center/cover no-repeat;
+}
+
+.icon--valakas {
+    background: url('/assets/img/quest-heroes/quest-guide-hero-valakas-entry.png') center/cover no-repeat;
+}
+
+.icon--baium {
+    background: url('/assets/img/icons/Квест на Баюма.jpg') center/cover no-repeat;
+}
+
+.icon--frintezza {
+    background: url('/assets/img/icons/Квесты на Фринтеззу.jpg') center/cover no-repeat;
+}
+
+.icon--fishing {
+    background: url('/assets/img/icons/Скиллы рыбалки.jpg') center/cover no-repeat;
+}
+
+.icon--clan {
+    background: url('/assets/img/icons/Клановые скилы (Clan Skills).png') center/cover no-repeat;
+}
+
+.icon--squad {
+    background: url('/assets/img/icons/Умения отрядов (Squad Skills).jpg') center/cover no-repeat;
+}
+
+.icon--manor {
+    background: url('/assets/img/icons/Сбор и сдача манора.jpg') center/cover no-repeat;
+}
+
+.icon--tree {
+    background: url('/assets/img/icons/Дерево классов (Скиллы).jpg') center/cover no-repeat;
+}
+
+.icon--enchant {
+    background: url('/assets/img/icons/Заточка скиллов (Enchanting Skills).jpg') center/cover no-repeat;
+}
+
+.icon--soul {
+    background: url('/assets/img/icons/прокачка кристаллов.jpg') center/cover no-repeat;
+}
+
+.icon--cube {
+    background: url('/assets/img/icons/квест на кубик.jpg') center/cover no-repeat;
+}
+
+.icon--transform {
+    background: url('/assets/img/icons/квест на трансформацию.jpg') center/cover no-repeat;
+}
+
+.icon--ears {
+    background: url('/assets/img/icons/Квест на уши (Кролика, Енота, Кота).jpg') center/cover no-repeat;
+}
+
+.icon--subclass {
+    background: url('/assets/img/icons/Квесты на саб-класс (Sub-class).jpg') center/cover no-repeat;
+}
+
+.icon--noblesse {
+    background: url('/assets/img/icons/Квесты на дворянина (Noblesse).jpg') center/cover no-repeat;
+}
+
+.icon--pagan {
+    background: url('/assets/img/icons/Квесты на проход в Pagan Temple.jpg') center/cover no-repeat;
+}
+
+.icon--wedding {
+    background: url('/assets/img/icons/Квесты на свадебный наряд.jpg') center/cover no-repeat;
+}
+
+.icon--pk {
+    background: url('/assets/img/quest-heroes/quest-guide-hero-wash-pk.png') center/cover no-repeat;
+}
+
+.link {
+    color: $accent;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.45;
+    transition: color 0.24s ease;
+}
+
+.quests__item:hover,
+.skills__item:hover,
+.guides__item:hover {
+    transform: translateX(5px);
+}
+
+.quests__item:hover .icon,
+.skills__item:hover .icon,
+.guides__item:hover .icon {
+    transform: translateY(-2px);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.24),
+        0 14px 22px rgba(19, 32, 49, 0.18);
+    filter: saturate(1.08);
+}
+
+.link:hover {
+    color: $accent-dark;
+}
+
+.skills__list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 32px;
+}
+
+.guides__list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 1199px) {
+    .intro__banner-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .intro__layout {
+        grid-template-columns: 224px minmax(0, 1fr);
+    }
+
+    .quests__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991px) {
+    .intro__layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .sidebar {
+        order: -1;
+    }
+
+    .sidebar__list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sidebar__item + .sidebar__item {
+        border-top: 0;
+    }
+
+    .sidebar__item {
+        border-top: 1px solid rgba(216, 223, 233, 0.76);
+    }
+
+    .quests__grid,
+    .skills__list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    // On mobile, disable blue overlay so text is always visible
+    .intro__banner-card::after {
+        display: none !important;
+    }
+
+    .intro__banner-title,
+    .intro__banner-info {
+        opacity: 1 !important;
+        transform: none !important;
+        text-shadow: 0 2px 20px rgba(0, 0, 0, 0.9);
+    }
+
+    .intro {
+        padding-bottom: 28px;
+    }
+
+    .intro__banner-list,
+    .sidebar__list,
+    .quests__grid,
+    .skills__list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .intro__content {
+        padding: 18px 16px 20px;
+    }
+
+    .intro__banner-card {
+        min-height: 124px;
+    }
+
+    .intro__banner-title {
+        font-size: 15px;
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    .intro__banner-info {
+        max-width: 100%;
+        font-size: 12px;
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    .sidebar__submenu-link {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    .section-head__title {
+        font-size: 18px;
+    }
+
+    .link {
+        font-size: 13px;
+    }
+}

@@ -1,0 +1,843 @@
+﻿<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="L2Wiki.Su - база знаний по Lineage II. Гайды, квесты, локации, монстры, NPC и все что нужно для игры в духе классических community-сайтов."
+        />
+        <meta name="keywords" content="Lineage II, L2, L2INT, гайды, квесты, база знаний, локации, монстры, NPC, Маммон, Пайлака" />
+        <meta name="author" content="L2Wiki.Su" />
+        <meta name="theme-color" content="#0B1223" />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://L2Wiki.Su/" />
+        <meta property="og:title" content="L2Wiki.Su - База знаний Lineage II" />
+        <meta
+            property="og:description"
+            content="База знаний по Lineage II. Полные гайды, квесты, локации, монстры, NPC и всё для успешной игры."
+        />
+        <meta property="og:image" content="https://L2Wiki.Su/assets/img/home/og-image.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="L2Wiki.Su" />
+        <meta property="og:locale" content="ru_RU" />
+
+        <!-- Twitter -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content="https://L2Wiki.Su/" />
+        <meta name="twitter:title" content="L2Wiki.Su - База знаний Lineage II" />
+        <meta
+            name="twitter:description"
+            content="База знаний по Lineage II. Полные гайды, квесты, локации, монстры, NPC и всё для успешной игры."
+        />
+        <meta name="twitter:image" content="https://L2Wiki.Su/assets/img/home/twitter-image.png" />
+
+        <!-- Canonical URL -->
+        <link rel="canonical" href="https://L2Wiki.Su/" />
+
+        <!-- Preconnect to external resources -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+        <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+
+        <title>L2Wiki.Su - База знаний Lineage II | Гайды, квесты, локации</title>
+        <link rel="stylesheet" href="/assets/sass/css/index.min.css?v=20260412-admin-pets-v3" />
+        <link rel="stylesheet" href="/assets/css/improvements.css?v=20260412-content-fix-v1" />
+        <link rel="stylesheet" href="/assets/css/rich-wiki.css?v=20260413-quest-layout-v3" />
+        <link rel="stylesheet" href="/assets/css/ad-blocks.css?v=20260410-legacy-rebuild-v1" />
+        <link rel="stylesheet" href="/assets/css/search-modal.css?v=20260408-search-fixed-v2" />
+        <link rel="stylesheet" href="/assets/css/quest-icons.css?v=20260413-root-icons-v5" />
+        
+        <!-- Inline icon fixes - HIGHEST PRIORITY -->
+        <style>
+        .quests__item .icon, .skills__item .icon, .guides__item .icon {
+            width: 32px !important;
+            height: 32px !important;
+            min-width: 32px !important;
+            max-width: 32px !important;
+            border-radius: 6px !important;
+            background-size: cover !important;
+            background-position: center center !important;
+            background-repeat: no-repeat !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+            color: transparent !important;
+            font-size: 0 !important;
+            line-height: 0 !important;
+            overflow: hidden !important;
+        }
+        
+        .quests__item .icon::before, .skills__item .icon::before, .guides__item .icon::before {
+            display: none !important;
+            content: none !important;
+            background: none !important;
+        }
+        
+        /* Epic Bosses - from ROOT where available */
+        .icon--freya { background-image: url('/assets/img/icons/Квесты на Фрею.jpg') !important; }
+        .icon--antharas { background-image: url('/assets/img/icons/Квест на Антараса.jpg') !important; }
+        .icon--valakas { background-image: url('/квестнавалакса.jpg') !important; }
+        .icon--baium { background-image: url('/assets/img/icons/Квест на Баюма.jpg') !important; }
+        .icon--frintezza { background-image: url('/assets/img/icons/Квесты на Фринтеззу.jpg') !important; }
+        
+        /* Pailaka */
+        .icon--pailaka-1 { background-image: url('/assets/img/icons/Пайлака - Песня льда и огня.jpg') !important; }
+        .icon--pailaka-2 { background-image: url('/assets/img/icons/Пайлака - Наследие Дьявола.jpg') !important; }
+        .icon--pailaka-3 { background-image: url('/assets/img/icons/Пайлака - Раненый Дракон.jpg') !important; }
+        
+        /* Pets - from ROOT */
+        .icon--wolf { background-image: url('/assets/img/icons/Квест на Волка (Wolf Collar).jpg') !important; }
+        .icon--bull { background-image: url('/квестнабыка.jpg') !important; }
+        .icon--bird { background-image: url('/квестнаптицу.jpg') !important; }
+        .icon--tiger { background-image: url('/assets/img/icons/Квест на Тигра (Baby Cougar).jpg') !important; }
+        .icon--dragon { background-image: url('/assets/img/icons/Квест на Дракончика (Dragonflute).jpg') !important; }
+        .icon--wyvern { background-image: url('/квестнаездовогодракона.jpg') !important; }
+        
+        /* Skills & Guides */
+        .icon--fishing { background-image: url('/assets/img/icons/Скиллы рыбалки.jpg') !important; }
+        .icon--clan { background-image: url('/assets/img/icons/Клановые скилы (Clan Skills).png') !important; }
+        .icon--squad { background-image: url('/assets/img/icons/Умения отрядов (Squad Skills).jpg') !important; }
+        .icon--manor { background-image: url('/assets/img/icons/Сбор и сдача манора.jpg') !important; }
+        .icon--tree { background-image: url('/assets/img/icons/Дерево классов (Скиллы).jpg') !important; }
+        .icon--enchant { background-image: url('/assets/img/icons/Заточка скиллов (Enchanting Skills).jpg') !important; }
+        .icon--soul { background-image: url('/assets/img/icons/прокачка кристаллов.jpg') !important; }
+        .icon--cube { background-image: url('/assets/img/icons/квест на кубик.jpg') !important; }
+        .icon--transform { background-image: url('/assets/img/icons/квест на трансформацию.jpg') !important; }
+        .icon--ears { background-image: url('/assets/img/icons/Квест на уши (Кролика, Енота, Кота).jpg') !important; }
+        .icon--subclass { background-image: url('/assets/img/icons/Квесты на саб-класс (Sub-class).jpg') !important; }
+        .icon--noblesse { background-image: url('/assets/img/icons/Квесты на дворянина (Noblesse).jpg') !important; }
+        .icon--pagan { background-image: url('/assets/img/icons/Квесты на проход в Pagan Temple.jpg') !important; }
+        .icon--wedding { background-image: url('/assets/img/icons/Квесты на свадебный наряд.jpg') !important; }
+        .icon--pk { background-image: url('/квестнаотмытиеРК.jpg') !important; }
+        
+        /* Professions - from root */
+        .icon--profession-1 { background-image: url('/1st_prof.png') !important; }
+        .icon--profession-2 { background-image: url('/2nd_prof.png') !important; }
+        .icon--profession-3 { background-image: url('/3rd_prof.png') !important; }
+        .icon--profession-4 { background-image: url('/4_prof.png') !important; }
+        
+        /* Map styling */
+        .page-hero__map {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .page-hero__map h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .page-hero__map img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+        
+        /* Weapon catalog icons - LARGER & VISIBLE */
+        .catalog-item-icon {
+            width: 48px !important;
+            height: 48px !important;
+            min-width: 48px !important;
+            min-height: 48px !important;
+            margin-right: 12px !important;
+            vertical-align: middle !important;
+            border-radius: 4px !important;
+            object-fit: contain !important;
+            image-rendering: -webkit-optimize-contrast !important;
+            display: inline-block !important;
+        }
+        
+        /* Weapon type icons in catalog tables */
+        .weapon-type-icon {
+            width: 28px !important;
+            height: 28px !important;
+            min-width: 28px !important;
+            min-height: 28px !important;
+            margin-right: 8px !important;
+            vertical-align: middle !important;
+            object-fit: contain !important;
+            display: inline-block !important;
+            border-radius: 3px !important;
+        }
+        
+        .wiki-catalog-table td a {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            line-height: 1.5 !important;
+        }
+        
+        .wiki-catalog-table td {
+            vertical-align: middle !important;
+            padding: 14px 16px !important;
+            line-height: 1.5 !important;
+        }
+        
+        /* Skill icons */
+        .skill-icon, .wiki-infobox-meta img, .wiki-html img {
+            max-width: 32px !important;
+            max-height: 32px !important;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+        }
+        
+        /* Table images */
+        .wiki-catalog-table img:not(.catalog-item-icon):not(.weapon-type-icon), 
+        .wiki-table img {
+            width: 24px !important;
+            height: 24px !important;
+            object-fit: contain !important;
+            vertical-align: middle !important;
+            display: inline-block !important;
+        }
+        </style>
+        </head>
+    <body data-page="home">
+        <header class="header">
+            <div class="container">
+                <div class="header__banner">
+                    <div class="header__inner">
+                        <a class="header__logo" href="/index.html" aria-label="Перейти на главную страницу L2Wiki.su">
+                            <span class="header__logo-brand">L2Wiki.su</span>
+                            <span class="header__logo-subtitle">База знаний Lineage 2</span>
+                        </a>
+
+                        <div class="header__search" id="headerSearch">
+                            <label class="visually-hidden" for="site-search">Поиск по сайту</label>
+                            <input
+                                class="header__search-input"
+                                id="site-search"
+                                type="search"
+                                name="query"
+                                placeholder="Поиск по сайту..."
+                                autocomplete="off"
+                            />
+                            <button class="header__search-button" type="button" id="searchButton">Искать</button>
+                            <a class="header__contacts-button" href="/pages/article.html?article=contacts">Контакты</a>
+
+                            <!-- Compact search dropdown -->
+                            
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Ad Block: Below header -->
+        <div class="container">
+            <div class="ad-block ad-header" data-ad-slot="homeHeader" data-default-label="Рекламный блок (728x90)">
+                <span class="ad-block__label">Рекламный блок (728x90)</span>
+            </div>
+        </div>
+
+        <main>
+            <section class="intro">
+                <div class="container">
+                    <!-- Hidden H1 for SEO -->
+                    <h1 class="visually-hidden">L2Wiki.Su - База знаний по Lineage II: гайды, квесты, локации, монстры, NPC</h1>
+
+                    <nav class="intro__banners" aria-label="Популярные разделы">
+                        <ul class="intro__banner-list">
+                            <li class="intro__banner-item">
+                                <a class="intro__banner-card intro__banner-card--classes" href="/pages/article.html?article=class-tree">
+                                    <span class="intro__banner-title">ДЕРЕВО КЛАССОВ</span>
+                                    <span class="intro__banner-info">Профессии, ветки развития и быстрый переход к нужному классу.</span>
+                                </a>
+                            </li>
+                            <li class="intro__banner-item">
+                                <a
+                                    class="intro__banner-card intro__banner-card--catacombs"
+                                    href="/pages/article.html?article=catacombs-necropolis"
+                                >
+                                    <span class="intro__banner-title">КАТАКОМБЫ И<br />НЕКРОПОЛИ</span>
+                                    <span class="intro__banner-info">Ключевые споты, входы, фарм и маршруты по локациям.</span>
+                                </a>
+                            </li>
+                            <li class="intro__banner-item">
+                                <a class="intro__banner-card intro__banner-card--mammon" href="/pages/article.html?article=mammon-services">
+                                    <span class="intro__banner-title">МАГАЗИН И<br />КУЗНИЦА МАММОНА</span>
+                                    <span class="intro__banner-info">Обмен, рецепты, полезные сервисы и редкие позиции Маммона.</span>
+                                </a>
+                            </li>
+                            <li class="intro__banner-item">
+                                <a class="intro__banner-card intro__banner-card--spoiler" href="/pages/article.html?article=spoiler-guide">
+                                    <span class="intro__banner-title">ГАЙД СПОЙЛЕРУ</span>
+                                    <span class="intro__banner-info">Маршруты, добыча ресурсов и удобные цели для спойла.</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+
+                    <div class="intro__layout">
+                        <aside class="sidebar" aria-label="Разделы базы знаний">
+                            <ul class="sidebar__list">
+                                <li class="sidebar__item sidebar__item--current sidebar__item--has-submenu" data-section="quests">
+                                    <a class="sidebar__link" href="/pages/section.html?section=quests" aria-expanded="false">
+                                        <span class="text">Квесты</span>
+                                        <span class="arrow" aria-hidden="true">›</span>
+                                    </a>
+                                    <ul class="sidebar__submenu">
+                                        <li class="sidebar__submenu-item">
+                                            <a
+                                                class="sidebar__submenu-link"
+                                                data-group="profession"
+                                                href="/pages/section.html?section=quests&group=profession"
+                                                >На профессию</a
+                                            >
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a
+                                                class="sidebar__submenu-link"
+                                                data-group="pets"
+                                                href="/pages/section.html?section=quests&group=pets"
+                                                >Питомцы</a
+                                            >
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a
+                                                class="sidebar__submenu-link"
+                                                data-group="service"
+                                                href="/pages/section.html?section=quests&group=service"
+                                                >Сервисные</a
+                                            >
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a
+                                                class="sidebar__submenu-link"
+                                                data-group="epic"
+                                                href="/pages/section.html?section=quests&group=epic"
+                                                >Эпик и Пайлака</a
+                                            >
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="sidebar__item" data-section="npc">
+                                    <a class="sidebar__link" href="/pages/section.html?section=npc">
+                                        <span class="text">NPC</span>
+                                    </a>
+                                </li>
+                                <li class="sidebar__item" data-section="monsters">
+                                    <a class="sidebar__link" href="/pages/section.html?section=monsters">
+                                        <span class="text">Монстры</span>
+                                    </a>
+                                </li>
+                                <li class="sidebar__item sidebar__item--has-submenu" data-section="locations">
+                                    <a class="sidebar__link" href="/pages/section.html?section=locations" aria-expanded="false">
+                                        <span class="text">Локации</span>
+                                        <span class="arrow" aria-hidden="true">›</span>
+                                    </a>
+                                    <ul class="sidebar__submenu">
+                                        <li class="sidebar__submenu-item">
+                                            <a
+                                                class="sidebar__submenu-link"
+                                                data-group="catacombs"
+                                                href="/pages/section.html?section=locations&group=catacombs"
+                                                >Катакомбы</a
+                                            >
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a
+                                                class="sidebar__submenu-link"
+                                                data-group="necropolis"
+                                                href="/pages/section.html?section=locations&group=necropolis"
+                                                >Некрополи</a
+                                            >
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a
+                                                class="sidebar__submenu-link"
+                                                data-group="temples"
+                                                href="/pages/section.html?section=locations&group=temples"
+                                                >Pagan Temple</a
+                                            >
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a
+                                                class="sidebar__submenu-link"
+                                                data-group="farming"
+                                                href="/pages/section.html?section=locations&group=farming"
+                                                >Фарм-зоны</a
+                                            >
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="sidebar__item" data-section="guides">
+                                    <a class="sidebar__link" href="/pages/section.html?section=guides">
+                                        <span class="text">Гайды</span>
+                                    </a>
+                                </li>
+                                <li class="sidebar__item sidebar__item--has-submenu" data-section="skills">
+                                    <a class="sidebar__link" href="/pages/section.html?section=skills" aria-expanded="false">
+                                        <span class="text">Скиллы | Классы | Умения</span>
+                                        <span class="arrow" aria-hidden="true">›</span>
+                                    </a>
+                                    <ul class="sidebar__submenu">
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=class-tree"
+                                                >Классы и дерево</a
+                                            >
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=clan-skills">Поддерживающие умения</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=enchanting-skills">Усиление</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="sidebar__item sidebar__item--has-submenu" data-section="weapons">
+                                    <a class="sidebar__link" href="/pages/section.html?section=weapons" aria-expanded="false">
+                                        <span class="text">Оружие</span>
+                                        <span class="arrow" aria-hidden="true">›</span>
+                                    </a>
+                                    <ul class="sidebar__submenu">
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-overview">Обзор</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-swords">Мечи</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-daggers">Кинжалы</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-bows">Луки</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-two-handed">Двуручные мечи</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-blunt">Дубинки</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-two-handed-blunt"
+                                                >Двуручные дубинки</a
+                                            >
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-fists">Кастеты</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-pole">Алебарды</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-rapier">Рапиры</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=weapons-magic-books"
+                                                >Магические книги</a
+                                            >
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="sidebar__item sidebar__item--has-submenu" data-section="items">
+                                    <a class="sidebar__link" href="/pages/section.html?section=items" aria-expanded="false">
+                                        <span class="text">Предметы</span>
+                                        <span class="arrow" aria-hidden="true">›</span>
+                                    </a>
+                                    <ul class="sidebar__submenu">
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=items-weapons">Каталог предметов</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=items-resources">Ресурсы</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=items-armor">Броня</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=items-accessories">Бижутерия</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                                <li class="sidebar__item sidebar__item--has-submenu" data-section="misc">
+                                    <a class="sidebar__link" href="/pages/section.html?section=misc" aria-expanded="false">
+                                        <span class="text">Прочее</span>
+                                        <span class="arrow" aria-hidden="true">›</span>
+                                    </a>
+                                    <ul class="sidebar__submenu">
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=antharas-entry">Антарас</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=valakas-entry">Валакас</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=baium-entry">Баюм</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=frintezza-entry">Фринтеза</a>
+                                        </li>
+                                        <li class="sidebar__submenu-item">
+                                            <a class="sidebar__submenu-link" href="/pages/article.html?article=contacts">Контакты</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            </ul>
+
+                            <!-- Ad Block: In sidebar -->
+                            <div class="ad-block ad-sidebar" data-ad-slot="homeSidebar" data-default-label="Рекламный блок (300x250)">
+                                <span class="ad-block__label">Рекламный блок (300x250)</span>
+                            </div>
+                        </aside>
+
+                        <div class="intro__content">
+                            <section class="quests" aria-labelledby="quests-title">
+                                <div class="section-head">
+                                    <h2 class="section-head__title" id="quests-title">КВЕСТЫ</h2>
+                                    <span class="section-head__line" aria-hidden="true"></span>
+                                </div>
+
+                                <div class="quests__grid">
+                                    <div class="quests__column">
+                                        <ul class="quests__list">
+                                            <li class="quests__item">
+                                                <span class="icon icon--profession-1">I</span
+                                                ><a class="link" href="/pages/article.html?article=quest-profession-first"
+                                                    >Квесты на первую профессию</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--profession-2">II</span
+                                                ><a class="link" href="/pages/article.html?article=quest-profession-second"
+                                                    >Квесты на вторую профессию</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--profession-3">III</span
+                                                ><a class="link" href="/pages/article.html?article=quest-profession-third"
+                                                    >Квесты на третью профессию</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--profession-4">IV</span
+                                                ><a class="link" href="/pages/article.html?article=quest-profession-fourth"
+                                                    >Квест на четвертую профессию</a
+                                                >
+                                            </li>
+                                        </ul>
+
+                                        <ul class="quests__list quests__list--offset">
+                                            <li class="quests__item">
+                                                <span class="icon icon--wolf">WF</span
+                                                ><a class="link" href="/pages/article.html?article=quest-wolf-collar"
+                                                    >Квест на Волка (Wolf Collar)</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--bull">BF</span
+                                                ><a class="link" href="/pages/article.html?article=quest-baby-buffalo"
+                                                    >Квест на Быка (Baby Buffalo)</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--bird">BK</span
+                                                ><a class="link" href="/pages/article.html?article=quest-baby-kookabura"
+                                                    >Квест на Птицу (Baby Kookabura)</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--tiger">BC</span
+                                                ><a class="link" href="/pages/article.html?article=quest-baby-cougar"
+                                                    >Квест на Тигра (Baby Cougar)</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--dragon">DF</span
+                                                ><a class="link" href="/pages/article.html?article=quest-dragonflute"
+                                                    >Квест на Дракончика (Dragonflute)</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--wyvern">DB</span
+                                                ><a class="link" href="/pages/article.html?article=quest-dragon-bugle"
+                                                    >Квест на Ездового Дракона (Dragon Bugle)</a
+                                                >
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="quests__column">
+                                        <ul class="quests__list">
+                                            <li class="quests__item">
+                                                <span class="icon icon--soul">SA</span
+                                                ><a class="link" href="/pages/article.html?article=soul-crystal"
+                                                    >Прокачка Кристалла души (SA)</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--pk">PK</span
+                                                ><a class="link" href="/pages/article.html?article=wash-pk">Квест на отмытие PK</a>
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--cube">QB</span
+                                                ><a class="link" href="/pages/article.html?article=quest-cubic">Квест на кубик</a>
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--transform">TR</span
+                                                ><a class="link" href="/pages/article.html?article=transformation-quest"
+                                                    >Квест на трансформацию</a
+                                                >
+                                            </li>
+                                        </ul>
+
+                                        <ul class="quests__list quests__list--offset">
+                                            <li class="quests__item">
+                                                <span class="icon icon--subclass">SB</span
+                                                ><a class="link" href="/pages/article.html?article=subclass-quest"
+                                                    >Квесты на саб-класс (Sub-class)</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--noblesse">NB</span
+                                                ><a class="link" href="/pages/article.html?article=noblesse-quest"
+                                                    >Квесты на дворянина (Noblesse)</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--pagan">PG</span
+                                                ><a class="link" href="/pages/article.html?article=pagan-temple-pass"
+                                                    >Квесты на проход в Pagan Temple</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--wedding">WD</span
+                                                ><a class="link" href="/pages/article.html?article=wedding-quest"
+                                                    >Квесты на свадебный наряд</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--ears">ER</span
+                                                ><a class="link" href="/pages/article.html?article=ears-quest"
+                                                    >Квест на уши (Кролика, Енота, Кота)</a
+                                                >
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="quests__column">
+                                        <ul class="quests__list">
+                                            <li class="quests__item">
+                                                <span class="icon icon--pailaka-1">P1</span
+                                                ><a class="link" href="/pages/article.html?article=pailaka-song-fire"
+                                                    >Пайлака - Песня льда и огня</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--pailaka-2">P2</span
+                                                ><a class="link" href="/pages/article.html?article=pailaka-devils-legacy"
+                                                    >Пайлака - Наследие Дьявола</a
+                                                >
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--pailaka-3">P3</span
+                                                ><a class="link" href="/pages/article.html?article=pailaka-injured-dragon"
+                                                    >Пайлака - Раненый Дракон</a
+                                                >
+                                            </li>
+                                        </ul>
+
+                                        <ul class="quests__list quests__list--offset">
+                                            <li class="quests__item">
+                                                <span class="icon icon--freya">FR</span
+                                                ><a class="link" href="/pages/article.html?article=freya-entry">Квесты на Фрею</a>
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--antharas">AN</span
+                                                ><a class="link" href="/pages/article.html?article=antharas-entry">Квест на Антараса</a>
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--valakas">VL</span
+                                                ><a class="link" href="/pages/article.html?article=valakas-entry">Квест на Валакаса</a>
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--baium">BM</span
+                                                ><a class="link" href="/pages/article.html?article=baium-entry">Квест на Баюма</a>
+                                            </li>
+                                            <li class="quests__item">
+                                                <span class="icon icon--frintezza">FN</span
+                                                ><a class="link" href="/pages/article.html?article=frintezza-entry">Квесты на Фринтезу</a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- Ad Block: Between sections -->
+                            <div class="ad-block ad-section-break" data-ad-slot="homeSectionBreak" data-default-label="Рекламный блок (728x90)">
+                                <span class="ad-block__label">Рекламный блок (728x90)</span>
+                            </div>
+
+                            <section class="weapons" aria-labelledby="weapons-title">
+                                <div class="section-head">
+                                    <h2 class="section-head__title" id="weapons-title">ОРУЖИЕ И ПРЕДМЕТЫ</h2>
+                                    <span class="section-head__line" aria-hidden="true"></span>
+                                </div>
+
+                                <div class="weapons__grid">
+                                    <div class="weapons__column">
+                                        <ul class="weapons__list">
+                                            <li class="weapons__item">
+                                                <span class="icon icon--sword">SW</span
+                                                ><a class="link" href="/pages/article.html?article=weapons-swords">Мечи (Swords)</a>
+                                            </li>
+                                            <li class="weapons__item">
+                                                <span class="icon icon--dagger">DG</span
+                                                ><a class="link" href="/pages/article.html?article=weapons-daggers">Кинжалы (Daggers)</a>
+                                            </li>
+                                            <li class="weapons__item">
+                                                <span class="icon icon--bow">BW</span
+                                                ><a class="link" href="/pages/article.html?article=weapons-bows">Луки (Bows)</a>
+                                            </li>
+                                            <li class="weapons__item">
+                                                <span class="icon icon--blunt">BL</span
+                                                ><a class="link" href="/pages/article.html?article=weapons-blunt">Дубины (Blunts)</a>
+                                            </li>
+                                            <li class="weapons__item">
+                                                <span class="icon icon--pole">PL</span
+                                                ><a class="link" href="/pages/article.html?article=weapons-pole">Копья (Polearms)</a>
+                                            </li>
+                                            <li class="weapons__item">
+                                                <span class="icon icon--big">2H</span
+                                                ><a class="link" href="/pages/article.html?article=weapons-two-handed">Двуручные мечи</a>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="weapons__column">
+                                        <ul class="weapons__list">
+                                            <li class="weapons__item">
+                                                <span class="icon icon--fist">FS</span
+                                                ><a class="link" href="/pages/article.html?article=weapons-fists">Кастеты (Fist)</a>
+                                            </li>
+                                            <li class="weapons__item">
+                                                <span class="icon icon--dual">DL</span
+                                                ><a class="link" href="/pages/article.html?article=weapons-duals">Парные мечи (Dual)</a>
+                                            </li>
+                                            <li class="weapons__item">
+                                                <span class="icon icon--armor">AR</span
+                                                ><a class="link" href="/pages/article.html?article=items-armor">Броня (Armor)</a>
+                                            </li>
+                                            <li class="weapons__item">
+                                                <span class="icon icon--acc">AC</span
+                                                ><a class="link" href="/pages/article.html?article=items-accessories">Бижутерия</a>
+                                            </li>
+                                            <li class="weapons__item">
+                                                <span class="icon icon--sa">SA</span
+                                                ><a class="link" href="/pages/article.html?article=svc-soul-crystal">Прокачка SA</a>
+                                            </li>
+                                            <li class="weapons__item">
+                                                <span class="icon icon--mammon">MM</span
+                                                ><a class="link" href="/pages/article.html?article=svc-mammon-shop">Магазин Маммона</a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- Ad Block: Between sections -->
+                            <div class="ad-block ad-section-break" data-ad-slot="homeSectionBreak2" data-default-label="Рекламный блок (728x90)">
+                                <span class="ad-block__label">Рекламный блок (728x90)</span>
+                            </div>
+
+                            <section class="skills" aria-labelledby="skills-title">
+                                <div class="section-head">
+                                    <h2 class="section-head__title" id="skills-title">СКИЛЛЫ | КЛАССЫ | УМЕНИЯ</h2>
+                                    <span class="section-head__line" aria-hidden="true"></span>
+                                </div>
+
+                                <ul class="skills__list">
+                                    <li class="skills__item">
+                                        <span class="icon icon--tree">TR</span
+                                        ><a class="link" href="/pages/article.html?article=class-tree">Дерево классов (Скиллы)</a>
+                                    </li>
+                                    <li class="skills__item">
+                                        <span class="icon icon--fishing">FS</span
+                                        ><a class="link" href="/pages/article.html?article=fishing-skills">Скиллы рыбалки</a>
+                                    </li>
+                                    <li class="skills__item">
+                                        <span class="icon icon--clan">CL</span
+                                        ><a class="link" href="/pages/article.html?article=clan-skills">Клановые скиллы (Clan Skills)</a>
+                                    </li>
+                                    <li class="skills__item">
+                                        <span class="icon icon--enchant">EN</span
+                                        ><a class="link" href="/pages/article.html?article=enchanting-skills"
+                                            >Заточка скиллов (Enchanting Skills)</a
+                                        >
+                                    </li>
+                                    <li class="skills__item">
+                                        <span class="icon icon--squad">SQ</span
+                                        ><a class="link" href="/pages/article.html?article=squad-skills">Умения отрядов (Squad Skills)</a>
+                                    </li>
+                                </ul>
+                            </section>
+
+                            <section class="guides" aria-labelledby="guides-title">
+                                <div class="section-head">
+                                    <h2 class="section-head__title" id="guides-title">ГАЙДЫ</h2>
+                                    <span class="section-head__line" aria-hidden="true"></span>
+                                </div>
+
+                                <ul class="guides__list">
+                                    <li class="guides__item">
+                                        <span class="icon icon--manor">MN</span
+                                        ><a class="link" href="/pages/article.html?article=manor-guide">Сбор и сдача манора</a>
+                                    </li>
+                                </ul>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        <!-- Search Modal -->
+        </div>
+        </main>
+
+        <!-- Ad Block: Before footer -->
+        <div class="container">
+            <div class="ad-block ad-content-bottom" data-ad-slot="homeContentBottom" data-default-label="Рекламный блок (728x90)">
+                <span class="ad-block__label">Рекламный блок (728x90)</span>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <div class="container">
+                <div class="footer__inner"></div>
+            </div>
+        </footer>
+
+       
+        <script src="/assets/js/static-data.js?v=20260413-restored-v2" charset="utf-8"></script>
+        <script src="/assets/js/weapons-data.js?v=20260411-weapons-v3" charset="utf-8"></script>
+        <script src="/assets/js/api-loader.js" charset="utf-8"></script>
+        <script src="/assets/js/data-store.js" charset="utf-8"></script>
+        <script src="/assets/js/wiki.js?v=20260413-quest-layout-v1" charset="utf-8"></script>
+        <script src="/assets/js/index.js" charset="utf-8"></script>
+        <script src="/assets/js/seo-structured-data.js?v=20260411-map-seo-v2" charset="utf-8"></script>
+
+        
+        </div>
+
+        
+        
+        
+
+
+                    <script src="/assets/js/search-global.js?v=20260408-search-fixed-v2" charset="utf-8"></script>
+    </body>
+</html>

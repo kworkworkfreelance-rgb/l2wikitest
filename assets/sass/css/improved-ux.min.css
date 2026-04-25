@@ -1,0 +1,241 @@
+.search-suggestions {
+  z-index: 999;
+  border-radius: 12px;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(11, 121, 207, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+:focus-visible {
+  outline: 2px solid #0b79cf;
+  outline-offset: 2px;
+}
+
+input:not([type=hidden]):focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #0b79cf;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 3px rgba(11, 121, 207, 0.1);
+}
+input:not([type=hidden]):hover:not(:focus),
+textarea:hover:not(:focus),
+select:hover:not(:focus) {
+  border-color: rgba(11, 121, 207, 0.4);
+}
+
+button:not(.header__search-button) {
+  position: relative;
+  overflow: hidden;
+}
+button:not(.header__search-button)::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+button:not(.header__search-button):active::before {
+  width: 300px;
+  height: 300px;
+}
+
+a:not(.header__logo):not(.intro__banner-card):not([class*=__link]) {
+  position: relative;
+}
+a:not(.header__logo):not(.intro__banner-card):not([class*=__link])::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #0b79cf;
+  transition: width 0.3s ease;
+}
+a:not(.header__logo):not(.intro__banner-card):not([class*=__link]):hover::after {
+  width: 100%;
+}
+a:not(.header__logo):not(.intro__banner-card):not([class*=__link]):focus {
+  outline: 2px solid #0b79cf;
+  outline-offset: 2px;
+}
+
+::-moz-selection {
+  background: #0b79cf;
+  color: white;
+}
+
+::selection {
+  background: #0b79cf;
+  color: white;
+}
+
+::-moz-selection {
+  background: #0b79cf;
+  color: white;
+}
+
+::-moz-placeholder {
+  color: rgba(110, 128, 146, 0.6);
+  opacity: 1;
+}
+
+::placeholder {
+  color: rgba(110, 128, 146, 0.6);
+  opacity: 1;
+}
+
+:-ms-input-placeholder {
+  color: rgba(110, 128, 146, 0.6);
+}
+
+::-ms-input-placeholder {
+  color: rgba(110, 128, 146, 0.6);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(11, 121, 207, 0.3);
+  border-radius: 4px;
+  -webkit-transition: background 0.3s ease;
+  transition: background 0.3s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(11, 121, 207, 0.5);
+}
+
+mark {
+  background: rgba(11, 121, 207, 0.2);
+  color: #045eaa;
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-style: normal;
+}
+
+ul:not([class]),
+ol:not([class]) {
+  padding-left: 20px;
+}
+ul:not([class]) li,
+ol:not([class]) li {
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+ul:not([class]) li:hover,
+ol:not([class]) li:hover {
+  margin-left: 4px;
+  color: #0b79cf;
+}
+
+body {
+  line-height: 1.6;
+  letter-spacing: 0.3px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+}
+
+p {
+  margin-bottom: 12px;
+}
+
+code {
+  background: rgba(11, 121, 207, 0.08);
+  color: #045eaa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: "Courier New", monospace;
+  font-size: 0.9em;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+table th,
+table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #d6dde7;
+}
+table th {
+  background: #e7f3fd;
+  color: #045eaa;
+  font-weight: 600;
+}
+table tr:hover {
+  background: rgba(11, 121, 207, 0.02);
+}
+
+blockquote {
+  border-left: 4px solid #0b79cf;
+  padding: 12px 16px;
+  background: #e7f3fd;
+  border-radius: 4px;
+  margin: 16px 0;
+  font-style: italic;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+.skeleton {
+  animation: skeleton-loading 2s infinite;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 1000px 100%;
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  h2 {
+    font-size: 24px;
+  }
+  h3 {
+    font-size: 20px;
+  }
+}
+@media print {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+  body {
+    background: white;
+  }
+  a {
+    text-decoration: underline;
+  }
+}/*# sourceMappingURL=improved-ux.min.css.map */

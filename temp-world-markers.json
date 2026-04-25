@@ -1,0 +1,625 @@
+[
+  {
+    "label": "Pagan Temple",
+    "href": "/pages/article.html?article=pagan-temple-location",
+    "x": 64.8,
+    "y": 30.4,
+    "kind": "location"
+  },
+  {
+    "label": "Маршрут в Imperial Tomb",
+    "href": "/pages/article.html?article=imperial-tomb-route",
+    "x": 69.6,
+    "y": 35.4,
+    "kind": "location"
+  },
+  {
+    "label": "Gludio Castle",
+    "href": "/pages/article.html?article=archive-location-castle-item-3443-gludio-castle",
+    "x": 14.8,
+    "y": 74.6,
+    "kind": "location"
+  },
+  {
+    "label": "Dion Castle",
+    "href": "/pages/article.html?article=archive-location-castle-item-3444-dion-castle",
+    "x": 23.8,
+    "y": 69.6,
+    "kind": "location"
+  },
+  {
+    "label": "Giran Castle",
+    "href": "/pages/article.html?article=archive-location-castle-item-3445-giran-castle",
+    "x": 32,
+    "y": 82.1,
+    "kind": "location"
+  },
+  {
+    "label": "Innadril Castle",
+    "href": "/pages/article.html?article=archive-location-castle-item-3446-innadril-castle",
+    "x": 40.7,
+    "y": 90.2,
+    "kind": "location"
+  },
+  {
+    "label": "Oren Castle",
+    "href": "/pages/article.html?article=archive-location-castle-item-3447-oren-castle",
+    "x": 39.7,
+    "y": 60.5,
+    "kind": "location"
+  },
+  {
+    "label": "Schuttgart Castle",
+    "href": "/pages/article.html?article=archive-location-castle-item-3448-schuttgart-castle",
+    "x": 51.1,
+    "y": 24.6,
+    "kind": "location"
+  },
+  {
+    "label": "Goddard Castle",
+    "href": "/pages/article.html?article=archive-location-castle-item-3449-goddard-castle",
+    "x": 68.5,
+    "y": 39.3,
+    "kind": "location"
+  },
+  {
+    "label": "Rune Castle",
+    "href": "/pages/article.html?article=archive-location-castle-item-3450-rune-castle",
+    "x": 63.7,
+    "y": 27.1,
+    "kind": "location"
+  },
+  {
+    "label": "Aden Castle",
+    "href": "/pages/article.html?article=archive-location-castle-item-3451-aden-castle",
+    "x": 50.6,
+    "y": 48.2,
+    "kind": "location"
+  },
+  {
+    "label": "Necropolis of Sacrifice (Жертвенный Некрополь)",
+    "href": "/pages/article.html?article=archive-location-necropolis-catacombs-item-3147-necropolis-of-sacrifice",
+    "x": 9.8,
+    "y": 80.4,
+    "kind": "location"
+  },
+  {
+    "label": "The Pilgrim's Necropolis (Некрополь Пилигримов)",
+    "href": "/pages/article.html?article=archive-location-necropolis-catacombs-item-3148-the-pilgrim-s-necropolis",
+    "x": 17.4,
+    "y": 77.2,
+    "kind": "location"
+  },
+  {
+    "label": "Necropolis of Worship (Некрополь Послушников)",
+    "href": "/pages/article.html?article=archive-location-necropolis-catacombs-item-3149-necropolis-of-worship",
+    "x": 25.9,
+    "y": 68.9,
+    "kind": "location"
+  },
+  {
+    "label": "The Patriot's Necropolis (Некрополь Повстанцев)",
+    "href": "/pages/article.html?article=archive-location-necropolis-catacombs-item-3150-the-patriot-s-necropolis",
+    "x": 20.8,
+    "y": 71.1,
+    "kind": "location"
+  },
+  {
+    "label": "Necropolis of Devotion (Молитвенный Некрополь)",
+    "href": "/pages/article.html?article=archive-location-necropolis-catacombs-item-3151-necropolis-of-devotion",
+    "x": 35.7,
+    "y": 64.1,
+    "kind": "location"
+  },
+  {
+    "label": "Necropolis of Martyrdom (Некрополь Мучеников)",
+    "href": "/pages/article.html?article=archive-location-necropolis-catacombs-item-3152-necropolis-of-martyrdom",
+    "x": 45.8,
+    "y": 60.6,
+    "kind": "location"
+  },
+  {
+    "label": "The Saint's Necropolis (Некрополь Святых)",
+    "href": "/pages/article.html?article=archive-location-necropolis-catacombs-item-3153-the-saint-s-necropolis",
+    "x": 56.5,
+    "y": 34.5,
+    "kind": "location"
+  },
+  {
+    "label": "The Disciple's Necropolis (Некрополь Апостолов)",
+    "href": "/pages/article.html?article=archive-location-necropolis-catacombs-item-3154-the-disciple-s-necropolis",
+    "x": 61.9,
+    "y": 31.8,
+    "kind": "location"
+  },
+  {
+    "label": "Catacomb of the Heretic (Катакомбы Еретиков)",
+    "href": "/pages/article.html?article=archive-location-necropolis-catacombs-item-3141-catacomb-of-the-heretic",
+    "x": 14.1,
+    "y": 68.3,
+    "kind": "location"
+  },
+  {
+    "label": "Talking Island Village",
+    "href": "/pages/article.html?article=location-talking-island",
+    "x": 7.8,
+    "y": 83.8,
+    "kind": "location"
+  },
+  {
+    "label": "The Village of Gludin",
+    "href": "/pages/article.html?article=location-gludin",
+    "x": 10.4,
+    "y": 70.7,
+    "kind": "location"
+  },
+  {
+    "label": "Town of Giran",
+    "href": "/pages/article.html?article=location-giran",
+    "x": 29.8,
+    "y": 82.1,
+    "kind": "location"
+  },
+  {
+    "label": "Ruins of Despair",
+    "href": "/pages/article.html?article=location-ruins-despair",
+    "x": 12.6,
+    "y": 73.4,
+    "kind": "location"
+  },
+  {
+    "label": "Elven Forest",
+    "href": "/pages/article.html?article=location-elven-forest",
+    "x": 17.8,
+    "y": 61.3,
+    "kind": "location"
+  },
+  {
+    "label": "Dark Elven Forest",
+    "href": "/pages/article.html?article=location-dark-elven-forest",
+    "x": 51.4,
+    "y": 76.6,
+    "kind": "location"
+  },
+  {
+    "label": "Cruma Tower",
+    "href": "/pages/article.html?article=location-cruma-tower",
+    "x": 24.8,
+    "y": 78.2,
+    "kind": "location"
+  },
+  {
+    "label": "Sea of Spores",
+    "href": "/pages/article.html?article=location-sea-spores",
+    "x": 43.8,
+    "y": 54.1,
+    "kind": "location"
+  },
+  {
+    "label": "Devastated Castle",
+    "href": "/pages/article.html?article=location-devastated-castle",
+    "x": 55.4,
+    "y": 44.1,
+    "kind": "location"
+  },
+  {
+    "label": "Tower of Insolence",
+    "href": "/pages/article.html?article=location-tower-insolence",
+    "x": 58.4,
+    "y": 49.7,
+    "kind": "location"
+  },
+  {
+    "label": "Primeval Isle",
+    "href": "/pages/article.html?article=location-primeval-isle",
+    "x": 71.2,
+    "y": 90.8,
+    "kind": "location"
+  },
+  {
+    "label": "Stakato Nest",
+    "href": "/pages/article.html?article=location-stakato-nest",
+    "x": 68.9,
+    "y": 33.4,
+    "kind": "location"
+  },
+  {
+    "label": "Mithril Mines",
+    "href": "/pages/article.html?article=location-mithril-mines",
+    "x": 48.7,
+    "y": 18.5,
+    "kind": "location"
+  },
+  {
+    "label": "Valley of Saints",
+    "href": "/pages/article.html?article=location-valley-saints",
+    "x": 57.6,
+    "y": 33.7,
+    "kind": "location"
+  },
+  {
+    "label": "Ivory Tower",
+    "href": "/pages/article.html?article=location-ivory-tower",
+    "x": 46.3,
+    "y": 58.2,
+    "kind": "location"
+  },
+  {
+    "label": "Магазин, распечатка и улучшение у Мамона",
+    "href": "/pages/article.html?article=mammon-services",
+    "x": 68.5,
+    "y": 39.3,
+    "kind": "npc"
+  },
+  {
+    "label": "Gatekeeper и быстрые маршруты",
+    "href": "/pages/article.html?article=gatekeeper-network",
+    "x": 32.9,
+    "y": 82.1,
+    "kind": "npc"
+  },
+  {
+    "label": "Cecile (Сесиль)",
+    "href": "/pages/article.html?article=archive-npc-item-5484-cecile",
+    "x": 32.8,
+    "y": 82.5,
+    "kind": "npc"
+  },
+  {
+    "label": "Mariell (Мариэль)",
+    "href": "/pages/article.html?article=archive-npc-item-5483-mariell",
+    "x": 32.7,
+    "y": 83,
+    "kind": "npc"
+  },
+  {
+    "label": "Merian (Мериан)",
+    "href": "/pages/article.html?article=archive-npc-item-5482-merian",
+    "x": 32.5,
+    "y": 83.3,
+    "kind": "npc"
+  },
+  {
+    "label": "Minerva (Минерва)",
+    "href": "/pages/article.html?article=archive-npc-item-5481-minerva",
+    "x": 32.1,
+    "y": 83.7,
+    "kind": "npc"
+  },
+  {
+    "label": "Elisa (Элиза)",
+    "href": "/pages/article.html?article=archive-npc-item-5480-elisa",
+    "x": 31.8,
+    "y": 83.9,
+    "kind": "npc"
+  },
+  {
+    "label": "Angelina (Ангелина)",
+    "href": "/pages/article.html?article=archive-npc-item-5479-angelina",
+    "x": 31.3,
+    "y": 84,
+    "kind": "npc"
+  },
+  {
+    "label": "Verona (Верона)",
+    "href": "/pages/article.html?article=archive-npc-item-5478-verona",
+    "x": 30.9,
+    "y": 84.1,
+    "kind": "npc"
+  },
+  {
+    "label": "Tatiana (Татьяна)",
+    "href": "/pages/article.html?article=archive-npc-item-5475-tatiana",
+    "x": 30.5,
+    "y": 84,
+    "kind": "npc"
+  },
+  {
+    "label": "Penelope (Пенелопа)",
+    "href": "/pages/article.html?article=archive-npc-item-5474-penelope",
+    "x": 30,
+    "y": 83.9,
+    "kind": "npc"
+  },
+  {
+    "label": "Hanna (Ханна)",
+    "href": "/pages/article.html?article=archive-npc-item-5473-hanna",
+    "x": 29.7,
+    "y": 83.7,
+    "kind": "npc"
+  },
+  {
+    "label": "Trisha (Триша)",
+    "href": "/pages/article.html?article=archive-npc-item-5472-trisha",
+    "x": 29.3,
+    "y": 83.3,
+    "kind": "npc"
+  },
+  {
+    "label": "Clarissa (Кларисса)",
+    "href": "/pages/article.html?article=archive-npc-item-5471-clarissa",
+    "x": 29.1,
+    "y": 83,
+    "kind": "npc"
+  },
+  {
+    "label": "Karin (Карин)",
+    "href": "/pages/article.html?article=archive-npc-item-5468-karin",
+    "x": 29,
+    "y": 82.5,
+    "kind": "npc"
+  },
+  {
+    "label": "Valentina (Валентина)",
+    "href": "/pages/article.html?article=archive-npc-item-5467-valentina",
+    "x": 28.9,
+    "y": 82.1,
+    "kind": "npc"
+  },
+  {
+    "label": "Esmeralda (Эсмеральда)",
+    "href": "/pages/article.html?article=archive-npc-item-5466-esmeralda",
+    "x": 29,
+    "y": 81.7,
+    "kind": "npc"
+  },
+  {
+    "label": "Richlin (Ричин)",
+    "href": "/pages/article.html?article=archive-npc-item-5464-richlin",
+    "x": 29.1,
+    "y": 81.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Siff (Сифф)",
+    "href": "/pages/article.html?article=archive-npc-item-5463-siff",
+    "x": 29.3,
+    "y": 80.9,
+    "kind": "npc"
+  },
+  {
+    "label": "Mozella (Мозелла)",
+    "href": "/pages/article.html?article=archive-npc-item-5462-mozella",
+    "x": 29.7,
+    "y": 80.5,
+    "kind": "npc"
+  },
+  {
+    "label": "Capella (Капелла)",
+    "href": "/pages/article.html?article=archive-npc-item-5460-capella",
+    "x": 30,
+    "y": 80.3,
+    "kind": "npc"
+  },
+  {
+    "label": "Radic (Радик)",
+    "href": "/pages/article.html?article=archive-npc-item-5452-radic",
+    "x": 30.5,
+    "y": 80.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Markius (Маркиус)",
+    "href": "/pages/article.html?article=archive-npc-item-5451-markius",
+    "x": 30.9,
+    "y": 80.1,
+    "kind": "npc"
+  },
+  {
+    "label": "Erviante (Эрвианте)",
+    "href": "/pages/article.html?article=archive-npc-item-5449-erviante",
+    "x": 31.3,
+    "y": 80.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Valkon (Валькон)",
+    "href": "/pages/article.html?article=archive-npc-item-5447-valkon",
+    "x": 31.8,
+    "y": 80.3,
+    "kind": "npc"
+  },
+  {
+    "label": "Randolf (Рандольф)",
+    "href": "/pages/article.html?article=archive-npc-item-5446-randolf",
+    "x": 32.1,
+    "y": 80.5,
+    "kind": "npc"
+  },
+  {
+    "label": "Taurin (Таурин)",
+    "href": "/pages/article.html?article=archive-npc-item-5444-taurin",
+    "x": 32.5,
+    "y": 80.9,
+    "kind": "npc"
+  },
+  {
+    "label": "Pochi (Почи)",
+    "href": "/pages/article.html?article=archive-npc-item-5443-pochi",
+    "x": 32.7,
+    "y": 81.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Wilford (Вильфорд)",
+    "href": "/pages/article.html?article=archive-npc-item-5433-wilford",
+    "x": 32.8,
+    "y": 81.7,
+    "kind": "npc"
+  },
+  {
+    "label": "Квестовые NPC-хабы",
+    "href": "/pages/article.html?article=quest-hub-npcs",
+    "x": 52.1,
+    "y": 48.2,
+    "kind": "npc"
+  },
+  {
+    "label": "NPC для клана и поддержки",
+    "href": "/pages/article.html?article=clan-support-npcs",
+    "x": 51.7,
+    "y": 49.3,
+    "kind": "npc"
+  },
+  {
+    "label": "Bella (Белла)",
+    "href": "/pages/article.html?article=archive-npc-item-5465-bella",
+    "x": 50.6,
+    "y": 49.7,
+    "kind": "npc"
+  },
+  {
+    "label": "Hagger (Хаггер)",
+    "href": "/pages/article.html?article=archive-npc-item-5453-hagger",
+    "x": 49.5,
+    "y": 49.3,
+    "kind": "npc"
+  },
+  {
+    "label": "Collob (Коллоб)",
+    "href": "/pages/article.html?article=archive-npc-item-5445-collob",
+    "x": 49.1,
+    "y": 48.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Sorint (Соринт)",
+    "href": "/pages/article.html?article=archive-npc-item-5439-sorint",
+    "x": 49.5,
+    "y": 47.1,
+    "kind": "npc"
+  },
+  {
+    "label": "Walderal (Вальдерал)",
+    "href": "/pages/article.html?article=archive-npc-item-5436-walderal",
+    "x": 50.6,
+    "y": 46.7,
+    "kind": "npc"
+  },
+  {
+    "label": "Chamberlain (Камергер)",
+    "href": "/pages/article.html?article=archive-npc-item-5432-chamberlain",
+    "x": 51.7,
+    "y": 47.1,
+    "kind": "npc"
+  },
+  {
+    "label": "Roxxy (Рокси)",
+    "href": "/pages/article.html?article=archive-npc-item-5486-roxxy",
+    "x": 15.9,
+    "y": 74.6,
+    "kind": "npc"
+  },
+  {
+    "label": "Rolfe (Ролфе)",
+    "href": "/pages/article.html?article=archive-npc-item-5441-rolfe",
+    "x": 13.7,
+    "y": 74.6,
+    "kind": "npc"
+  },
+  {
+    "label": "Wirphy (Вирфи)",
+    "href": "/pages/article.html?article=archive-npc-item-5485-wirphy",
+    "x": 52.2,
+    "y": 24.6,
+    "kind": "npc"
+  },
+  {
+    "label": "Grookin (Грукин)",
+    "href": "/pages/article.html?article=archive-npc-item-5435-grookin",
+    "x": 50.6,
+    "y": 25.6,
+    "kind": "npc"
+  },
+  {
+    "label": "Airy (Эйри)",
+    "href": "/pages/article.html?article=archive-npc-item-5434-airy",
+    "x": 50.6,
+    "y": 23.6,
+    "kind": "npc"
+  },
+  {
+    "label": "Flauen (Флоен)",
+    "href": "/pages/article.html?article=archive-npc-item-5477-flauen",
+    "x": 41.8,
+    "y": 90.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Mia (Миа)",
+    "href": "/pages/article.html?article=archive-npc-item-5437-mia",
+    "x": 39.6,
+    "y": 90.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Race Track Gatekeeper (Хранитель Портала Ипподрома Монстров)",
+    "href": "/pages/article.html?article=archive-npc-item-5476-race-track-gatekeeper",
+    "x": 28.9,
+    "y": 75.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Ponti (Понти)",
+    "href": "/pages/article.html?article=archive-npc-item-5461-ponti",
+    "x": 26.7,
+    "y": 75.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Jasmine (Жасмин)",
+    "href": "/pages/article.html?article=archive-npc-item-5470-jasmine",
+    "x": 41.2,
+    "y": 60.5,
+    "kind": "npc"
+  },
+  {
+    "label": "Mirabel (Мирабель)",
+    "href": "/pages/article.html?article=archive-npc-item-5469-mirabel",
+    "x": 40.5,
+    "y": 61.8,
+    "kind": "npc"
+  },
+  {
+    "label": "Julia (Джулия)",
+    "href": "/pages/article.html?article=archive-npc-item-5450-julia",
+    "x": 39,
+    "y": 61.8,
+    "kind": "npc"
+  },
+  {
+    "label": "Dorankus (Доранкус)",
+    "href": "/pages/article.html?article=archive-npc-item-5448-dorankus",
+    "x": 38.2,
+    "y": 60.5,
+    "kind": "npc"
+  },
+  {
+    "label": "Norman (Норман)",
+    "href": "/pages/article.html?article=archive-npc-item-5440-norman",
+    "x": 39,
+    "y": 59.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Haprock (Хапрок)",
+    "href": "/pages/article.html?article=archive-npc-item-5438-haprock",
+    "x": 40.5,
+    "y": 59.2,
+    "kind": "npc"
+  },
+  {
+    "label": "Holvas (Хольвас)",
+    "href": "/pages/article.html?article=archive-npc-item-5442-holvas",
+    "x": 24.9,
+    "y": 69.6,
+    "kind": "npc"
+  },
+  {
+    "label": "Edroc (Эдрок)",
+    "href": "/pages/article.html?article=archive-npc-item-5431-edroc",
+    "x": 22.7,
+    "y": 69.6,
+    "kind": "npc"
+  }
+]

@@ -1,0 +1,202 @@
+/* Monster and Farming Zone Enhancements */
+
+/* Monster icon display */
+.monster-icon-shell {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #09111f;
+    border-radius: 8px;
+    border: 1px solid rgba(44, 65, 89, 0.16);
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.monster-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Farming zone image styling */
+.farming-zone-image {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    border-radius: 12px;
+    border: 1px solid rgba(44, 65, 89, 0.16);
+    margin: 16px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Monster detail stats table */
+.monster-stats-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.monster-stats-table th,
+.monster-stats-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid rgba(44, 65, 89, 0.1);
+}
+
+.monster-stats-table th {
+    background: #f7fafc;
+    font-weight: 700;
+    color: #21384f;
+    width: 40%;
+}
+
+.monster-stats-table td {
+    color: #334b63;
+    font-weight: 500;
+}
+
+.monster-stats-table tr:last-child th,
+.monster-stats-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Aggression indicator styling */
+.aggro-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.aggro-indicator--yes {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.aggro-indicator--no {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+/* Race badge */
+.race-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(11, 121, 207, 0.1);
+    color: #0b79cf;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Farming zone level range */
+.level-range {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #0b79cf, #0056b3);
+    color: #fff;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin: 8px 0;
+}
+
+.level-range__icon {
+    width: 18px;
+    height: 18px;
+    opacity: 0.9;
+}
+
+/* Monster grid for overview */
+.monster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+}
+
+.monster-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.monster-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.monster-card__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.monster-card__info h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: #21384f;
+    font-weight: 700;
+}
+
+.monster-card__meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 0.85rem;
+    color: #5d7390;
+}
+
+.monster-card__body {
+    font-size: 0.9rem;
+    color: #334b63;
+    line-height: 1.5;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .monster-stats-table th,
+    .monster-stats-table td {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    .monster-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .monster-card {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 540px) {
+    .monster-icon-shell {
+        width: 36px;
+        height: 36px;
+    }
+
+    .monster-stats-table th,
+    .monster-stats-table td {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+}

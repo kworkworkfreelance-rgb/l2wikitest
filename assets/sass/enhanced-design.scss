@@ -1,0 +1,264 @@
+// Enhanced component animations and styling improvements
+
+// Hero image for articles
+.page-hero__image {
+    margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+    img {
+        width: 100%;
+        height: auto;
+        max-height: 400px;
+        object-fit: cover;
+        display: block;
+    }
+}
+
+// Header enhancements
+.header {
+    animation: slideInDown 0.6s ease-out;
+}
+
+.header__logo {
+    animation: fadeIn 0.8s ease-out 0.2s both;
+}
+
+.header__search {
+    animation: fadeIn 0.8s ease-out 0.3s both;
+}
+
+// Intro section enhancements
+.intro {
+    animation: fadeIn 0.6s ease-out;
+}
+
+.intro__banner-item {
+    animation: slideInUp 0.6s ease-out;
+
+    &:nth-child(1) {
+        animation-delay: 0.1s;
+    }
+    &:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    &:nth-child(3) {
+        animation-delay: 0.3s;
+    }
+    &:nth-child(4) {
+        animation-delay: 0.4s;
+    }
+}
+
+.intro__banner-card {
+    transform: translateZ(0);
+
+    &:hover {
+        animation: none;
+    }
+}
+
+// Sidebar enhancements
+.sidebar__item {
+    animation: slideInLeft 0.5s ease-out;
+
+    @for $i from 1 through 10 {
+        &:nth-child(#{$i}) {
+            animation-delay: (($i - 1) * 0.08s);
+        }
+    }
+}
+
+.sidebar__link {
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+
+    &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: #0b79cf;
+        transition: width 0.3s ease;
+    }
+
+    &:hover::after {
+        width: 100%;
+    }
+}
+
+.sidebar__item.is-open .sidebar__link {
+    color: #0b79cf;
+    font-weight: 600;
+
+    &::after {
+        width: 100%;
+    }
+}
+
+.sidebar__submenu {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+.sidebar__submenu-item {
+    animation: fadeIn 0.3s ease-out;
+
+    @for $i from 1 through 10 {
+        &:nth-child(#{$i}) {
+            animation-delay: (($i - 1) * 0.05s);
+        }
+    }
+}
+
+.sidebar__submenu-link {
+    transition: all 0.2s ease;
+    position: relative;
+    padding-left: 12px;
+
+    &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 3px;
+        background: #0b79cf;
+        border-radius: 50%;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+
+    &:hover,
+    &:focus-visible {
+        padding-left: 18px;
+
+        &::before {
+            opacity: 1;
+        }
+    }
+}
+
+// Knowledge cards enhancements
+.knowledge-card {
+    animation: scaleUp 0.4s ease-out;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    border: 1px solid rgba(11, 121, 207, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+
+    &:hover {
+        border-color: #0b79cf;
+        box-shadow: 0 12px 32px rgba(11, 121, 207, 0.12);
+        transform: translateY(-4px);
+    }
+}
+
+.knowledge-card__title {
+    a {
+        position: relative;
+        transition: color 0.3s ease;
+
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #0b79cf;
+            transition: width 0.3s ease;
+        }
+
+        &:hover {
+            color: #0b79cf;
+
+            &::after {
+                width: 100%;
+            }
+        }
+    }
+}
+
+// Form elements improvements
+input[type='search'],
+input[type='text'],
+textarea,
+select {
+    transition: all 0.3s ease;
+    border: 1px solid #d6dde7;
+    border-radius: 6px;
+
+    &:focus {
+        border-color: #0b79cf;
+        box-shadow: 0 0 0 3px rgba(11, 121, 207, 0.1);
+    }
+
+    &:hover:not(:focus) {
+        border-color: rgba(11, 121, 207, 0.5);
+    }
+}
+
+// Button enhancements
+button:not(.header__search-button) {
+    font-weight: 600;
+    border-radius: 6px;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(11, 121, 207, 0.25);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+// Link hover effects
+a:not(.header__logo):not(.intro__banner-card) {
+    position: relative;
+    transition: color 0.3s ease;
+
+    &:hover {
+        color: #0b79cf;
+    }
+}
+
+// Page transition animations
+body {
+    animation: fadeIn 0.5s ease-out;
+}
+
+main {
+    animation: slideInUp 0.6s ease-out 0.1s both;
+}
+
+// Loading state animation
+.is-loading {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+// Responsive animation adjustments
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+// Smooth transitions across pages
+@media (max-width: 991px) {
+    .sidebar__item {
+        animation-delay: 0s;
+    }
+
+    .intro__banner-item {
+        animation-delay: 0s;
+    }
+}

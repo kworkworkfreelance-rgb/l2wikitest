@@ -1,0 +1,140 @@
+.admin-auth {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px 20px;
+}
+
+.admin-auth__card {
+    width: min(100%, 520px);
+    padding: 32px;
+    border-radius: 28px;
+    border: 1px solid rgba(96, 165, 250, 0.18);
+    background:
+        radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 34%),
+        linear-gradient(180deg, rgba(12, 18, 31, 0.98), rgba(16, 24, 38, 0.94));
+    box-shadow:
+        0 30px 80px rgba(3, 7, 18, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.admin-auth__eyebrow {
+    display: inline-block;
+    margin-bottom: 12px;
+    color: #7dd3fc;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.admin-auth__title {
+    margin: 0;
+    color: #f8fafc;
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    line-height: 1.05;
+}
+
+.admin-auth__text {
+    margin: 16px 0 0;
+    color: rgba(226, 232, 240, 0.78);
+    line-height: 1.7;
+}
+
+.admin-auth__text code {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.16);
+    color: #dbeafe;
+}
+
+.admin-auth__form {
+    display: grid;
+    gap: 18px;
+    margin-top: 24px;
+}
+
+.admin-auth__error {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    background: rgba(127, 29, 29, 0.2);
+    color: #fecaca;
+}
+
+.admin-auth__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.admin-shell[hidden],
+.admin-auth[hidden] {
+    display: none !important;
+}
+
+.admin-form__grid--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-field textarea[id$='Blocks'],
+.admin-field textarea[id$='Columns'],
+.admin-field textarea[id$='Rows'],
+.admin-field textarea[id='articleBlocks'],
+.admin-field textarea[id='sectionLandingBlocks'],
+.admin-field textarea[id='sectionCatalogColumns'],
+.admin-field textarea[id='sectionCatalogRows'] {
+    min-height: 220px;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.admin-field textarea[id='articleSidebarFacts'],
+.admin-field textarea[id='sectionLandingSidebarFacts'],
+.admin-field textarea[id='articleMeta'],
+.admin-field textarea[id='sectionStats'] {
+    min-height: 160px;
+}
+
+.admin-card .admin-note {
+    padding: 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(141, 164, 196, 0.16);
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.admin-item.is-selected,
+.admin-sidebar__item:focus-visible,
+.admin-sidebar__item:hover {
+    border-color: rgba(59, 130, 246, 0.34);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.admin-item.is-selected {
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.2);
+}
+
+.admin-field__hint,
+.admin-json-hint {
+    font-size: 12px;
+    color: var(--admin-text-muted);
+}
+
+@media (max-width: 1080px) {
+    .admin-form__grid--three {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-auth__card {
+        padding: 24px 18px;
+        border-radius: 22px;
+    }
+
+    .admin-auth__actions {
+        flex-direction: column;
+    }
+}

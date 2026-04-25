@@ -1,0 +1,28 @@
+node_modules/
+l2wiki.db
+l2wiki-db-backup.json
+.env
+.env.*
+*.log
+npm-debug.log*
+
+# Local archives and backups
+data/backups/
+data/raw/
+data/.private/
+copy/
+.l2wiki-storage/
+
+# Temporary workspace files
+temp-*.html
+temp-*.txt
+.codex-temp/
+0)
+h[1]
+.qwen/
+
+# Duplicate/local-only assets
+map.png
+
+# Export packages
+dist-static/

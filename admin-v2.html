@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="refresh" content="0; url=/admin.html" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="robots" content="noindex, nofollow" />
+        <title>Переход в актуальную админку</title>
+        <style>
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                padding: 24px;
+                background: #0f1726;
+                color: #e8eef7;
+                font: 16px/1.6 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+
+            main {
+                max-width: 640px;
+                padding: 28px;
+                border: 1px solid rgba(141, 164, 196, 0.16);
+                border-radius: 18px;
+                background: rgba(255, 255, 255, 0.03);
+            }
+
+            a {
+                color: #8fc2ff;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>Локальная `admin-v2` отключена</h1>
+            <p>Проект теперь использует одну server-backed админку с canonical JSON, backup-снимками и синхронизацией SQLite.</p>
+            <p>Если редирект не сработал автоматически, откройте <a href="/admin.html">`/admin.html`</a>.</p>
+        </main>
+    </body>
+</html>

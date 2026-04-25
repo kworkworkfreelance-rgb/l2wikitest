@@ -1,0 +1,270 @@
+// Improved design and styling enhancements
+
+// Modal and overlay improvements
+.search-suggestions {
+    z-index: 999;
+    border-radius: 12px;
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(11, 121, 207, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+// Better focus states for accessibility
+:focus-visible {
+    outline: 2px solid #0b79cf;
+    outline-offset: 2px;
+}
+
+// Improved input styling
+input:not([type='hidden']),
+textarea,
+select {
+    &:focus {
+        outline: none;
+        border-color: #0b79cf;
+        box-shadow:
+            inset 0 2px 4px rgba(0, 0, 0, 0.05),
+            0 0 0 3px rgba(11, 121, 207, 0.1);
+    }
+
+    &:hover:not(:focus) {
+        border-color: rgba(11, 121, 207, 0.4);
+    }
+}
+
+// Enhanced button styles
+button:not(.header__search-button) {
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition:
+            width 0.6s,
+            height 0.6s;
+    }
+
+    &:active::before {
+        width: 300px;
+        height: 300px;
+    }
+}
+
+// Enhanced link styling with underline animation
+a:not(.header__logo):not(.intro__banner-card):not([class*='__link']) {
+    position: relative;
+
+    &::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: #0b79cf;
+        transition: width 0.3s ease;
+    }
+
+    &:hover::after {
+        width: 100%;
+    }
+
+    &:focus {
+        outline: 2px solid #0b79cf;
+        outline-offset: 2px;
+    }
+}
+
+// Enhanced text selection color
+::selection {
+    background: #0b79cf;
+    color: white;
+}
+
+::-moz-selection {
+    background: #0b79cf;
+    color: white;
+}
+
+// Better placeholder styling
+::placeholder {
+    color: rgba(110, 128, 146, 0.6);
+    opacity: 1;
+}
+
+:-ms-input-placeholder {
+    color: rgba(110, 128, 146, 0.6);
+}
+
+::-ms-input-placeholder {
+    color: rgba(110, 128, 146, 0.6);
+}
+
+// Enhanced scrollbar styling globally
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(11, 121, 207, 0.3);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+
+    &:hover {
+        background: rgba(11, 121, 207, 0.5);
+    }
+}
+
+// Better mark/highlight styling
+mark {
+    background: rgba(11, 121, 207, 0.2);
+    color: #045eaa;
+    font-weight: 500;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-style: normal;
+}
+
+// Enhanced list styling
+ul:not([class]),
+ol:not([class]) {
+    padding-left: 20px;
+
+    li {
+        margin-bottom: 8px;
+        transition: all 0.2s ease;
+
+        &:hover {
+            margin-left: 4px;
+            color: #0b79cf;
+        }
+    }
+}
+
+// Better typography for improved readability
+body {
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    line-height: 1.2;
+    letter-spacing: 0.2px;
+}
+
+p {
+    margin-bottom: 12px;
+}
+
+// Enhanced code block styling if used
+code {
+    background: rgba(11, 121, 207, 0.08);
+    color: #045eaa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+// Enhanced table styling if used
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+
+    th,
+    td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #d6dde7;
+    }
+
+    th {
+        background: #e7f3fd;
+        color: #045eaa;
+        font-weight: 600;
+    }
+
+    tr:hover {
+        background: rgba(11, 121, 207, 0.02);
+    }
+}
+
+// Enhanced blockquote styling if used
+blockquote {
+    border-left: 4px solid #0b79cf;
+    padding: 12px 16px;
+    background: #e7f3fd;
+    border-radius: 4px;
+    margin: 16px 0;
+    font-style: italic;
+}
+
+// Loading skeleton animation
+@keyframes skeleton-loading {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.skeleton {
+    animation: skeleton-loading 2s infinite;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 1000px 100%;
+}
+
+// Improved responsive typography
+@media (max-width: 768px) {
+    html {
+        font-size: 14px;
+    }
+
+    h1 {
+        font-size: 28px;
+    }
+
+    h2 {
+        font-size: 24px;
+    }
+
+    h3 {
+        font-size: 20px;
+    }
+}
+
+// Print styles
+@media print {
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    body {
+        background: white;
+    }
+
+    a {
+        text-decoration: underline;
+    }
+}
