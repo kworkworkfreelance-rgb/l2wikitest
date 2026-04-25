@@ -34,7 +34,10 @@
         // Try loading from the main canonical file
         var canonicalUrl = '/data/canonical/l2wiki-canonical.json';
 
-        loadPromise = fetch(canonicalUrl)
+        loadPromise = fetch(`${canonicalUrl}?v=${Date.now()}`, {
+            cache: 'no-store',
+            credentials: 'same-origin',
+        })
             .then(function (response) {
                 if (!response.ok) {
                     throw new Error('Failed to load ' + canonicalUrl);

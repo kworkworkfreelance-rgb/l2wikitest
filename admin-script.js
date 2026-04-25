@@ -15,6 +15,7 @@
         database: store.getDatabase(),
         backups: [],
         adminUsername: window.L2WikiAdminSession?.username || 'admin',
+        adminPasswordManagedByEnv: Boolean(window.L2WikiAdminSession?.passwordManagedByEnv),
         contactsRowSeed: 0,
         builderSeed: 0,
     };
@@ -84,6 +85,7 @@
         securityCurrentPassword: document.getElementById('securityCurrentPassword'),
         securityNewPassword: document.getElementById('securityNewPassword'),
         securityConfirmPassword: document.getElementById('securityConfirmPassword'),
+        securitySubmitButton: document.querySelector('#securityForm button[type="submit"]'),
         contactsBuilderForm: document.getElementById('contactsBuilderForm'),
         contactsTitle: document.getElementById('contactsTitle'),
         contactsEyebrow: document.getElementById('contactsEyebrow'),
@@ -179,6 +181,7 @@
                 'Content-Type': 'application/json',
                 ...(options.headers || {}),
             },
+            cache: 'no-store',
             credentials: 'same-origin',
             ...options,
         });
@@ -1636,6 +1639,40 @@
 
     const fetchCanonicalSnapshot = async () => api('/data/canonical/l2wiki-canonical.json');
 
+    const syncSecurityFormState = () => {
+        const passwordManagedByEnv = Boolean(window.L2WikiAdminSession?.passwordManagedByEnv || state.adminPasswordManagedByEnv);
+        state.adminPasswordManagedByEnv = passwordManagedByEnv;
+
+        if (!elements.securityForm) {
+            return;
+        }
+
+        const fields = [elements.securityCurrentPassword, elements.securityNewPassword, elements.securityConfirmPassword].filter(Boolean);
+        fields.forEach((field) => {
+            field.disabled = passwordManagedByEnv;
+            field.required = !passwordManagedByEnv;
+        });
+
+        if (elements.securitySubmitButton) {
+            elements.securitySubmitButton.disabled = passwordManagedByEnv;
+            elements.securitySubmitButton.textContent = passwordManagedByEnv ? 'Пароль задается через ADMIN_PASSWORD' : 'Обновить пароль';
+        }
+
+        let note = elements.securityForm.querySelector('[data-security-note]');
+
+        if (!note) {
+            note = document.createElement('p');
+            note.className = 'admin-item__summary';
+            note.dataset.securityNote = '1';
+            elements.securityForm.insertBefore(note, elements.securityForm.firstChild);
+        }
+
+        note.hidden = !passwordManagedByEnv;
+        note.textContent = passwordManagedByEnv
+            ? 'На Render пароль администратора управляется переменной окружения ADMIN_PASSWORD. Из формы его менять не нужно: он общий для всех пользователей и сохраняется после перезапуска сервиса.'
+            : '';
+    };
+
     const rebuildSectionSnapshotLocally = (database, sectionId) => {
         const nextDatabase = cloneDatabase();
         const nextSection = nextDatabase.sections?.[sectionId];
@@ -1987,6 +2024,7 @@
         if (elements.securityUsername) {
             elements.securityUsername.value = state.adminUsername || window.L2WikiAdminSession?.username || 'admin';
         }
+        syncSecurityFormState();
         switchPanel(state.activePanel);
     };
 
@@ -2285,6 +2323,10 @@
         event.preventDefault();
 
         try {
+            if (state.adminPasswordManagedByEnv) {
+                throw new Error('Пароль администратора управляется переменной окружения ADMIN_PASSWORD на сервере.');
+            }
+
             const currentPassword = String(elements.securityCurrentPassword?.value || '');
             const newPassword = String(elements.securityNewPassword?.value || '');
             const confirmPassword = String(elements.securityConfirmPassword?.value || '');

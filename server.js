@@ -498,16 +498,20 @@ const enqueueSqliteSync = (database, reason = 'sync') => {
 
     const run = async () => syncCanonicalToSqlite(app.locals.db, database);
 
-    sqliteSyncQueue = sqliteSyncQueue.then(run, async (error) => {
+    const task = sqliteSyncQueue.then(run, async (error) => {
         console.error(`[sqlite] Previous sync failed before "${reason}":`, error);
         return run();
     });
 
-    sqliteSyncQueue = sqliteSyncQueue.catch((error) => {
-        console.error(`[sqlite] Sync failed for "${reason}":`, error);
-    });
+    sqliteSyncQueue = task.then(
+        () => undefined,
+        (error) => {
+            console.error(`[sqlite] Sync failed for "${reason}":`, error);
+            return undefined;
+        }
+    );
 
-    return sqliteSyncQueue;
+    return task;
 };
 
 const publishDatabase = async (database, reason = 'publish') => {
@@ -539,9 +543,25 @@ const queueDatabaseMutation = (reason, mutator) => {
         return publishDatabase(nextDatabase, reason);
     };
 
-    mutationQueue = mutationQueue.then(run, run);
-    return mutationQueue;
+    const task = mutationQueue.then(run, async (error) => {
+        console.error(`[publish] Previous mutation failed before "${reason}":`, error);
+        return run();
+    });
+
+    mutationQueue = task.then(
+        () => undefined,
+        () => undefined
+    );
+
+    return task;
 };
+
+const getAdminSessionPayload = (session) => ({
+    ok: true,
+    authenticated: Boolean(session),
+    username: session?.username,
+    passwordManagedByEnv: isAdminAuthManagedByEnv(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD),
+});
 
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 
@@ -711,7 +731,7 @@ app.post(
 
         const token = createAdminSession(username);
         setAdminCookie(req, res, token);
-        res.json({ ok: true, username });
+        res.json(getAdminSessionPayload({ username }));
     })
 );
 
@@ -733,11 +753,7 @@ app.get(
     '/api/admin/session',
     asyncRoute(async (req, res) => {
         const session = getAdminSession(req);
-        res.json({
-            ok: true,
-            authenticated: Boolean(session),
-            username: session?.username,
-        });
+        res.json(getAdminSessionPayload(session));
     })
 );
 
