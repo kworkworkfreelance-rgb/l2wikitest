@@ -652,8 +652,7 @@
                     }
 
                     adminAppLoaded = true;
-                    adminAppPromise = loadScript('/assets/js/static-data.js?v=20260413-admin-shell-v5')
-                        .then(() => loadScript('/assets/js/data-store.js?v=20260413-admin-shell-v5'))
+                    adminAppPromise = loadScript('/assets/js/data-store.js?v=20260413-admin-shell-v6')
                         .then(() => loadScript('./admin-script.js?v=20260413-admin-shell-v5'))
                         .catch((error) => {
                             adminAppLoaded = false;

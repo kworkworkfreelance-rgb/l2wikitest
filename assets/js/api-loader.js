@@ -6,19 +6,19 @@ async function loadData() {
     }
 
     try {
-        const response = await fetch('/api/database?full=1', {
+        const response = await fetch('/data/canonical/l2wiki-canonical.json', {
             cache: 'no-store',
             credentials: 'same-origin',
         });
 
         if (!response.ok) {
-            throw new Error('Database API is unavailable');
+            throw new Error('Canonical JSON is unavailable');
         }
 
         const payload = await response.json();
 
-        if (payload && payload.database && Object.keys(payload.database.sections || {}).length) {
-            window.L2WIKI_CONTENT = payload.database;
+        if (payload && Object.keys(payload.sections || {}).length) {
+            window.L2WIKI_CONTENT = payload;
             return;
         }
     } catch (error) {

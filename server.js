@@ -3,7 +3,6 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const vm = require('vm');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 
@@ -71,7 +70,8 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 const ROOT_DIR = __dirname;
-const STORAGE_DIR = process.env.L2WIKI_STORAGE_DIR ? path.resolve(process.env.L2WIKI_STORAGE_DIR) : ROOT_DIR;
+const DEFAULT_STORAGE_DIR = process.env.RENDER && fs.existsSync('/var/data') ? '/var/data/l2wiki' : ROOT_DIR;
+const STORAGE_DIR = process.env.L2WIKI_STORAGE_DIR ? path.resolve(process.env.L2WIKI_STORAGE_DIR) : DEFAULT_STORAGE_DIR;
 const MUTABLE_ASSETS_DIR = path.join(STORAGE_DIR, 'assets', 'js');
 const MUTABLE_DATA_DIR = path.join(STORAGE_DIR, 'data');
 const BACKUP_DIR = path.join(MUTABLE_DATA_DIR, 'backups');
@@ -89,6 +89,7 @@ const ADMIN_COOKIE_NAME = 'admin_token';
 const ADMIN_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const LFS_POINTER_PREFIX = 'version https://git-lfs.github.com/spec/v1';
 const REQUEST_BODY_LIMIT = process.env.L2WIKI_REQUEST_BODY_LIMIT || '100mb';
+const SQLITE_SYNC_ENABLED = /^(1|true|yes)$/i.test(String(process.env.L2WIKI_ENABLE_SQLITE_SYNC || ''));
 
 const ADMIN_SESSIONS = new Map();
 
@@ -108,8 +109,6 @@ const ensureMutableStorage = () => {
         fs.copyFileSync(APP_STATIC_DATA_PATH, STATIC_DATA_PATH);
     }
 };
-
-const isGitLfsPointer = (content = '') => String(content).startsWith(LFS_POINTER_PREFIX);
 
 const compactForStorage = (value) => {
     if (Array.isArray(value)) {
@@ -192,21 +191,95 @@ const parseDatabaseTimestamp = (database) => {
     return Number.isFinite(timestamp) ? timestamp : 0;
 };
 
+const readFilePrefix = (filePath, maxBytes = 256) => {
+    const fd = fs.openSync(filePath, 'r');
+    try {
+        const buffer = Buffer.alloc(maxBytes);
+        const bytesRead = fs.readSync(fd, buffer, 0, maxBytes, 0);
+        return buffer.slice(0, bytesRead).toString('utf8');
+    } finally {
+        fs.closeSync(fd);
+    }
+};
+
+const isGitLfsPointerFile = (filePath) => {
+    if (!fs.existsSync(filePath)) {
+        return false;
+    }
+
+    try {
+        return readFilePrefix(filePath).startsWith(LFS_POINTER_PREFIX);
+    } catch {
+        return false;
+    }
+};
+
+const extractSeedDataFromInlineScript = (source) => {
+    const prefix = 'window.L2WIKI_SEED_DATA=';
+    const suffix = ';window.L2WIKI_SEED_SOURCE=';
+    const startIndex = source.indexOf(prefix);
+
+    if (startIndex === -1) {
+        return null;
+    }
+
+    const endIndex = source.indexOf(suffix, startIndex + prefix.length);
+    const jsonText = source.slice(startIndex + prefix.length, endIndex === -1 ? undefined : endIndex).trim();
+
+    if (!jsonText) {
+        return null;
+    }
+
+    return JSON.parse(jsonText);
+};
+
+const extractSeedDataFromChunkLoader = (source, filePath) => {
+    const matches = Array.from(source.matchAll(/static-data-chunk-\d+\.js/g));
+
+    if (!matches.length) {
+        return null;
+    }
+
+    const chunkNames = Array.from(new Set(matches.map((match) => match[0])));
+    const chunkDir = path.dirname(filePath);
+    const base64 = chunkNames
+        .map((chunkName) => {
+            const chunkPath = path.join(chunkDir, chunkName);
+
+            if (!fs.existsSync(chunkPath)) {
+                throw new Error(`Missing chunk file: ${chunkName}`);
+            }
+
+            const chunkSource = fs.readFileSync(chunkPath, 'utf8');
+            const chunkMatch = chunkSource.match(/window\.__L2WIKI_CHUNKS\.push\("([A-Za-z0-9+/=]+)"\);/);
+
+            if (!chunkMatch) {
+                throw new Error(`Could not parse chunk payload: ${chunkName}`);
+            }
+
+            return chunkMatch[1];
+        })
+        .join('');
+
+    return JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
+};
+
+const resolveCanonicalJsonPath = () =>
+    [STORAGE_CANONICAL_PATH, APP_CANONICAL_PATH].find((filePath) => fs.existsSync(filePath) && !isGitLfsPointerFile(filePath)) || null;
+
 const loadJsonCandidate = (filePath, label) => {
     if (!fs.existsSync(filePath)) {
         return null;
     }
 
     try {
-        const contents = fs.readFileSync(filePath, 'utf8');
-
-        if (isGitLfsPointer(contents)) {
+        if (isGitLfsPointerFile(filePath)) {
             return null;
         }
 
         return {
             label,
-            data: normalizeDatabase(JSON.parse(contents)),
+            data: normalizeDatabase(JSON.parse(fs.readFileSync(filePath, 'utf8'))),
         };
     } catch (error) {
         console.warn(`[boot] Failed to parse ${label}: ${error.message}`);
@@ -220,17 +293,17 @@ const loadStaticSeedCandidate = (filePath, label) => {
     }
 
     try {
-        const sandbox = { window: {} };
         const source = fs.readFileSync(filePath, 'utf8');
-        vm.runInNewContext(source, sandbox, { filename: filePath });
+        const parsedDatabase =
+            extractSeedDataFromInlineScript(source) || extractSeedDataFromChunkLoader(source, filePath);
 
-        if (!sandbox.window || !sandbox.window.L2WIKI_SEED_DATA) {
+        if (!parsedDatabase) {
             return null;
         }
 
         return {
             label,
-            data: normalizeDatabase(sandbox.window.L2WIKI_SEED_DATA),
+            data: normalizeDatabase(parsedDatabase),
         };
     } catch (error) {
         console.warn(`[boot] Failed to evaluate ${label}: ${error.message}`);
@@ -306,7 +379,10 @@ const buildMeta = (database) => ({
     },
 });
 
-const cloneDatabase = (database) => deepClone(normalizeDatabase(database || {}));
+const cloneDatabase = (database) => deepClone(database || {});
+
+const getLiveDatabase = () => app.locals.database || normalizeDatabase({});
+const getWritableDatabase = () => cloneDatabase(getLiveDatabase());
 
 const sortByOrder = (left, right) => {
     const leftOrder = Number.isFinite(Number(left?.order)) ? Number(left.order) : 9999;
@@ -322,11 +398,12 @@ const sortByOrder = (left, right) => {
     );
 };
 
-const getDatabase = () => cloneDatabase(app.locals.database);
-
 const enqueueSqliteSync = (database, reason = 'sync') => {
-    const normalized = normalizeDatabase(database);
-    const run = async () => syncCanonicalToSqlite(app.locals.db, normalized);
+    if (!SQLITE_SYNC_ENABLED || !app.locals.db) {
+        return Promise.resolve(null);
+    }
+
+    const run = async () => syncCanonicalToSqlite(app.locals.db, database);
 
     sqliteSyncQueue = sqliteSyncQueue.then(run, async (error) => {
         console.error(`[sqlite] Previous sync failed before "${reason}":`, error);
@@ -352,12 +429,12 @@ const publishDatabase = async (database, reason = 'publish') => {
     app.locals.database = normalized;
     enqueueSqliteSync(normalized, reason);
 
-    return cloneDatabase(normalized);
+    return normalized;
 };
 
 const queueDatabaseMutation = (reason, mutator) => {
     const run = async () => {
-        const draft = getDatabase();
+        const draft = getWritableDatabase();
         const nextDatabase = await mutator(draft);
         return publishDatabase(nextDatabase, reason);
     };
@@ -442,6 +519,17 @@ const sendMutableFile = (res, filePath, contentType) => {
     res.sendFile(filePath);
 };
 
+const sendCanonicalDatabase = (res) => {
+    const canonicalPath = resolveCanonicalJsonPath();
+
+    if (!canonicalPath) {
+        return false;
+    }
+
+    sendMutableFile(res, canonicalPath, 'application/json; charset=utf-8');
+    return true;
+};
+
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
@@ -474,7 +562,9 @@ app.get(
 app.get(
     '/data/canonical/l2wiki-canonical.json',
     asyncRoute(async (req, res) => {
-        sendNoStoreJson(res, getDatabase());
+        if (!sendCanonicalDatabase(res)) {
+            sendNoStoreJson(res, getLiveDatabase());
+        }
     })
 );
 
@@ -588,16 +678,19 @@ app.get(
     asyncRoute(async (req, res) => {
         sendNoStoreJson(res, {
             ok: true,
-            database: getDatabase(),
-            meta: buildMeta(app.locals.database),
+            database: getLiveDatabase(),
+            meta: buildMeta(getLiveDatabase()),
         });
     })
 );
 
 app.get(
     '/api/export',
+    requireAdmin,
     asyncRoute(async (req, res) => {
-        sendNoStoreJson(res, getDatabase());
+        if (!sendCanonicalDatabase(res)) {
+            sendNoStoreJson(res, getLiveDatabase());
+        }
     })
 );
 
@@ -799,13 +892,15 @@ const start = async () => {
     const adminAuth = ensureAdminAuthFile(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
 
     const database = loadInitialDatabase();
-    const db = new sqlite3.Database(DB_PATH);
+    const db = SQLITE_SYNC_ENABLED ? new sqlite3.Database(DB_PATH) : null;
 
     app.locals.db = db;
     app.locals.database = database;
 
-    await ensureSqliteSchema(db);
-    await enqueueSqliteSync(database, 'boot');
+    if (db) {
+        await ensureSqliteSchema(db);
+        await enqueueSqliteSync(database, 'boot');
+    }
 
     app.listen(PORT, '0.0.0.0', () => {
         const activeStaticDataPath = fs.existsSync(STATIC_DATA_PATH) ? STATIC_DATA_PATH : APP_STATIC_DATA_PATH;
@@ -815,6 +910,7 @@ const start = async () => {
         console.log(
             `[boot] Database ready: ${Object.keys(database.sections || {}).length} sections, ${Object.keys(database.articles || {}).length} articles`
         );
+        console.log(`[boot] SQLite sync: ${SQLITE_SYNC_ENABLED ? 'enabled' : 'disabled'}`);
         console.log(`[boot] Server listening on http://0.0.0.0:${PORT} (bound to all interfaces)`);
         console.log(`[boot] Admin login: ${DEFAULT_ADMIN_USERNAME} (password is loaded from .env or stored admin state)`);
         console.log(`[boot] Admin auth file: ${AUTH_FILE_PATH} (${adminAuth.passwordSource || 'unknown'})`);
