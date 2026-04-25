@@ -56,11 +56,20 @@ const loadEnvFile = (filePath, options = {}) => {
 loadEnvFile(path.join(__dirname, '.env'));
 loadEnvFile(path.join(__dirname, '.env.local'), { overrideLoadedKeys: true });
 
-const { deepClone, normalizeDatabase } = require('./lib/rich-content-schema');
+const parseBooleanEnv = (value, fallback = false) => {
+    if (value == null || String(value).trim() === '') {
+        return fallback;
+    }
+
+    return /^(1|true|yes|on)$/i.test(String(value).trim());
+};
+
+const { deepClone, normalizeArticle, normalizeDatabase, normalizeSection, normalizeSite, rebuildSectionEntries } = require('./lib/rich-content-schema');
 const { ensureSqliteSchema, syncCanonicalToSqlite } = require('./lib/canonical-store');
 const {
     AUTH_FILE_PATH,
     ensureAdminAuthFile,
+    isAdminAuthManagedByEnv,
     readAdminAuth,
     updateAdminPassword,
     verifyAdminCredentials,
@@ -91,7 +100,9 @@ const ADMIN_COOKIE_NAME = 'admin_token';
 const ADMIN_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const LFS_POINTER_PREFIX = 'version https://git-lfs.github.com/spec/v1';
 const REQUEST_BODY_LIMIT = process.env.L2WIKI_REQUEST_BODY_LIMIT || '100mb';
-const SQLITE_SYNC_ENABLED = /^(1|true|yes)$/i.test(String(process.env.L2WIKI_ENABLE_SQLITE_SYNC || ''));
+const SQLITE_SYNC_ENABLED = parseBooleanEnv(process.env.L2WIKI_ENABLE_SQLITE_SYNC, false);
+const STATIC_PUBLISH_ENABLED = parseBooleanEnv(process.env.L2WIKI_ENABLE_STATIC_PUBLISH, !process.env.RENDER);
+const BACKUP_SNAPSHOTS_ENABLED = parseBooleanEnv(process.env.L2WIKI_ENABLE_BACKUPS, !process.env.RENDER);
 
 const ADMIN_SESSIONS = new Map();
 
@@ -119,36 +130,13 @@ const ensureDir = (targetPath) => {
 const ensureMutableStorage = () => {
     [STORAGE_DIR, MUTABLE_ASSETS_DIR, MUTABLE_DATA_DIR, BACKUP_DIR, CANONICAL_DIR].forEach(ensureDir);
 
-    if (STATIC_DATA_PATH !== APP_STATIC_DATA_PATH && !fs.existsSync(STATIC_DATA_PATH) && fs.existsSync(APP_STATIC_DATA_PATH)) {
+    if (STATIC_PUBLISH_ENABLED && STATIC_DATA_PATH !== APP_STATIC_DATA_PATH && !fs.existsSync(STATIC_DATA_PATH) && fs.existsSync(APP_STATIC_DATA_PATH)) {
         fs.copyFileSync(APP_STATIC_DATA_PATH, STATIC_DATA_PATH);
     }
 };
 
-const compactForStorage = (value) => {
-    if (Array.isArray(value)) {
-        const items = value.map(compactForStorage).filter((item) => item !== undefined);
-        return items.length ? items : undefined;
-    }
-
-    if (value && typeof value === 'object') {
-        const compacted = Object.fromEntries(
-            Object.entries(value)
-                .map(([key, entry]) => [key, compactForStorage(entry)])
-                .filter(([, entry]) => entry !== undefined)
-        );
-
-        return Object.keys(compacted).length ? compacted : undefined;
-    }
-
-    if (value === '' || value == null) {
-        return undefined;
-    }
-
-    return value;
-};
-
-const buildStaticDataSource = (database, sourceLabel = 'server-publish') =>
-    `window.L2WIKI_SEED_DATA=${JSON.stringify(compactForStorage(database) || {})};window.L2WIKI_SEED_SOURCE=${JSON.stringify({
+const buildStaticDataSource = (serializedDatabase, database, sourceLabel = 'server-publish') =>
+    `window.L2WIKI_SEED_DATA=${serializedDatabase};window.L2WIKI_SEED_SOURCE=${JSON.stringify({
         source: sourceLabel,
         generatedAt: new Date().toISOString(),
         articles: Object.keys(database.articles || {}).length,
@@ -163,25 +151,76 @@ const writeFileAtomic = (targetPath, contents) => {
     return targetPath;
 };
 
-const writeStaticDataFile = (database, sourceLabel = 'server-publish') => {
-    return writeFileAtomic(STATIC_DATA_PATH, buildStaticDataSource(database, sourceLabel));
+const writeChunk = (stream, chunk) =>
+    new Promise((resolve, reject) => {
+        if (!stream.write(chunk, 'utf8')) {
+            stream.once('drain', resolve);
+            return;
+        }
+
+        resolve();
+    });
+
+const writeDatabaseJsonFile = async (targetPath, database) => {
+    ensureDir(path.dirname(targetPath));
+    const tempPath = `${targetPath}.tmp`;
+
+    await new Promise((resolve, reject) => {
+        const stream = fs.createWriteStream(tempPath, { encoding: 'utf8' });
+
+        stream.on('error', reject);
+        stream.on('finish', resolve);
+
+        (async () => {
+            await writeChunk(stream, '{');
+            await writeChunk(stream, `"version":${JSON.stringify(database.version || 2)},`);
+            await writeChunk(stream, `"updatedAt":${JSON.stringify(database.updatedAt || new Date().toISOString())},`);
+            await writeChunk(stream, `"site":${JSON.stringify(database.site || {})},`);
+            await writeChunk(stream, '"sections":{');
+
+            let isFirst = true;
+            for (const [sectionId, section] of Object.entries(database.sections || {})) {
+                await writeChunk(stream, `${isFirst ? '' : ','}${JSON.stringify(sectionId)}:${JSON.stringify(section)}`);
+                isFirst = false;
+            }
+
+            await writeChunk(stream, '},');
+            await writeChunk(stream, '"articles":{');
+
+            isFirst = true;
+            for (const [articleId, article] of Object.entries(database.articles || {})) {
+                await writeChunk(stream, `${isFirst ? '' : ','}${JSON.stringify(articleId)}:${JSON.stringify(article)}`);
+                isFirst = false;
+            }
+
+            await writeChunk(stream, '}}');
+            stream.end();
+        })().catch((error) => {
+            stream.destroy(error);
+        });
+    });
+
+    fs.renameSync(tempPath, targetPath);
+    return targetPath;
 };
 
-const writeBackupSnapshot = (database, reason = 'publish') => {
+const writeStaticDataFile = (serializedDatabase, database, sourceLabel = 'server-publish') =>
+    writeFileAtomic(STATIC_DATA_PATH, buildStaticDataSource(serializedDatabase, database, sourceLabel));
+
+const writeBackupSnapshot = (sourceFilePath, reason = 'publish') => {
     ensureDir(BACKUP_DIR);
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const safeReason = String(reason || 'publish').replace(/[^a-z0-9_-]+/gi, '-');
     const fileName = `${stamp}-${safeReason}.json`;
     const filePath = path.join(BACKUP_DIR, fileName);
-    fs.writeFileSync(filePath, JSON.stringify(compactForStorage(database) || {}), 'utf8');
+    fs.copyFileSync(sourceFilePath, filePath);
     return {
         fileName,
         filePath,
     };
 };
 
-const writeCanonicalJsonFile = (database) =>
-    writeFileAtomic(STORAGE_CANONICAL_PATH, JSON.stringify(compactForStorage(database) || {}));
+const writeCanonicalJsonFile = (database) => writeDatabaseJsonFile(STORAGE_CANONICAL_PATH, database);
 
 const writeCanonicalMetaFile = (database) => writeFileAtomic(STORAGE_CANONICAL_META_PATH, JSON.stringify(buildMeta(database)));
 
@@ -283,7 +322,21 @@ const resolveCanonicalJsonPath = () =>
 const resolveCanonicalMetaPath = () =>
     [STORAGE_CANONICAL_META_PATH, APP_CANONICAL_META_PATH].find((filePath) => fs.existsSync(filePath) && !isGitLfsPointerFile(filePath)) || null;
 
-const loadJsonCandidate = (filePath, label) => {
+const prepareLoadedDatabase = (raw) => {
+    const database = raw && typeof raw === 'object' ? raw : createEmptyDatabase();
+
+    database.version = Number(database.version) || 2;
+    database.updatedAt = database.updatedAt || new Date().toISOString();
+    database.site = normalizeSite(database.site);
+    database.sections = database.sections && typeof database.sections === 'object' ? database.sections : {};
+    database.articles = database.articles && typeof database.articles === 'object' ? database.articles : {};
+
+    return database;
+};
+
+const loadJsonCandidate = (filePath, label, options = {}) => {
+    const shouldNormalize = Boolean(options.normalize);
+
     if (!fs.existsSync(filePath)) {
         return null;
     }
@@ -293,9 +346,11 @@ const loadJsonCandidate = (filePath, label) => {
             return null;
         }
 
+        const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
         return {
             label,
-            data: normalizeDatabase(JSON.parse(fs.readFileSync(filePath, 'utf8'))),
+            data: prepareLoadedDatabase(shouldNormalize ? normalizeDatabase(raw) : raw),
         };
     } catch (error) {
         console.warn(`[boot] Failed to parse ${label}: ${error.message}`);
@@ -303,7 +358,9 @@ const loadJsonCandidate = (filePath, label) => {
     }
 };
 
-const loadStaticSeedCandidate = (filePath, label) => {
+const loadStaticSeedCandidate = (filePath, label, options = {}) => {
+    const shouldNormalize = Boolean(options.normalize);
+
     if (!fs.existsSync(filePath)) {
         return null;
     }
@@ -319,7 +376,7 @@ const loadStaticSeedCandidate = (filePath, label) => {
 
         return {
             label,
-            data: normalizeDatabase(parsedDatabase),
+            data: prepareLoadedDatabase(shouldNormalize ? normalizeDatabase(parsedDatabase) : parsedDatabase),
         };
     } catch (error) {
         console.warn(`[boot] Failed to evaluate ${label}: ${error.message}`);
@@ -328,16 +385,20 @@ const loadStaticSeedCandidate = (filePath, label) => {
 };
 
 const loadDatabaseFromDisk = () => {
-    const candidates = [
-        loadJsonCandidate(STORAGE_CANONICAL_PATH, 'storage canonical'),
-        loadJsonCandidate(APP_CANONICAL_PATH, 'app canonical'),
-        loadStaticSeedCandidate(STATIC_DATA_PATH, 'storage static-data'),
-        loadStaticSeedCandidate(APP_STATIC_DATA_PATH, 'app static-data'),
-        loadJsonCandidate(LEGACY_JSON_PATH, 'legacy json'),
-    ].filter(Boolean);
+    const loaders = [
+        () => loadJsonCandidate(STORAGE_CANONICAL_PATH, 'storage canonical'),
+        () => loadJsonCandidate(APP_CANONICAL_PATH, 'app canonical'),
+        () => loadStaticSeedCandidate(STATIC_DATA_PATH, 'storage static-data'),
+        () => loadStaticSeedCandidate(APP_STATIC_DATA_PATH, 'app static-data'),
+        () => loadJsonCandidate(LEGACY_JSON_PATH, 'legacy json', { normalize: true }),
+    ];
 
-    if (candidates.length) {
-        return candidates[0];
+    for (const loadCandidate of loaders) {
+        const candidate = loadCandidate();
+
+        if (candidate) {
+            return candidate;
+        }
     }
 
     return {
@@ -360,6 +421,18 @@ const buildMeta = (database) => ({
 });
 
 const cloneDatabase = (database) => deepClone(database || {});
+const prepareDatabaseForPublish = (database) => {
+    const prepared = database && typeof database === 'object' ? database : createEmptyDatabase();
+
+    prepared.version = 2;
+    prepared.updatedAt = new Date().toISOString();
+    prepared.site = normalizeSite(prepared.site);
+    prepared.sections = prepared.sections && typeof prepared.sections === 'object' ? prepared.sections : {};
+    prepared.articles = prepared.articles && typeof prepared.articles === 'object' ? prepared.articles : {};
+
+    return rebuildSectionEntries(prepared);
+};
+
 const loadMetaFromDisk = () => {
     const metaPath = resolveCanonicalMetaPath();
 
@@ -438,16 +511,20 @@ const enqueueSqliteSync = (database, reason = 'sync') => {
 };
 
 const publishDatabase = async (database, reason = 'publish') => {
-    const normalized = normalizeDatabase({
-        ...database,
-        updatedAt: new Date().toISOString(),
-        version: 2,
-    });
+    const normalized = prepareDatabaseForPublish(database);
 
-    writeCanonicalJsonFile(normalized);
+    await writeCanonicalJsonFile(normalized);
     writeCanonicalMetaFile(normalized);
-    writeStaticDataFile(normalized, reason);
-    writeBackupSnapshot(normalized, reason);
+
+    if (STATIC_PUBLISH_ENABLED) {
+        const serializedDatabase = fs.readFileSync(STORAGE_CANONICAL_PATH, 'utf8');
+        writeStaticDataFile(serializedDatabase, normalized, reason);
+    }
+
+    if (BACKUP_SNAPSHOTS_ENABLED) {
+        writeBackupSnapshot(STORAGE_CANONICAL_PATH, reason);
+    }
+
     app.locals.database = null;
     app.locals.databaseMeta = buildMeta(normalized);
     enqueueSqliteSync(normalized, reason);
@@ -673,6 +750,11 @@ app.post(
         const confirmPassword = String(req.body?.confirmPassword || '');
         const auth = readAdminAuth(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
 
+        if (isAdminAuthManagedByEnv(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD)) {
+            res.status(400).json({ error: 'Пароль администратора управляется переменной ADMIN_PASSWORD в окружении.' });
+            return;
+        }
+
         if (!currentPassword) {
             res.status(400).json({ error: 'Введите текущий пароль' });
             return;
@@ -767,11 +849,14 @@ app.put(
         const sectionId = String(req.params.id || '').trim();
         const savedDatabase = await queueDatabaseMutation(`section-${sectionId}`, async (database) => {
             const existing = database.sections?.[sectionId] || {};
-            database.sections[sectionId] = {
-                ...existing,
-                ...req.body,
-                id: sectionId,
-            };
+            database.sections[sectionId] = normalizeSection(
+                {
+                    ...existing,
+                    ...req.body,
+                    id: sectionId,
+                },
+                sectionId
+            );
             return database;
         });
 
@@ -823,11 +908,14 @@ app.put(
         const articleId = String(req.params.id || '').trim();
         const savedDatabase = await queueDatabaseMutation(`article-${articleId}`, async (database) => {
             const existing = database.articles?.[articleId] || {};
-            database.articles[articleId] = {
-                ...existing,
-                ...req.body,
-                id: articleId,
-            };
+            database.articles[articleId] = normalizeArticle(
+                {
+                    ...existing,
+                    ...req.body,
+                    id: articleId,
+                },
+                articleId
+            );
             return database;
         });
 
@@ -855,10 +943,10 @@ app.put(
     requireAdmin,
     asyncRoute(async (req, res) => {
         const savedDatabase = await queueDatabaseMutation('site-settings', async (database) => {
-            database.site = {
+            database.site = normalizeSite({
                 ...(database.site || {}),
                 ...(req.body || {}),
-            };
+            });
             return database;
         });
 
@@ -870,7 +958,7 @@ app.post(
     '/api/import',
     requireAdmin,
     asyncRoute(async (req, res) => {
-        const savedDatabase = await queueDatabaseMutation('import', async () => req.body || {});
+        const savedDatabase = await queueDatabaseMutation('import', async () => normalizeDatabase(req.body || {}));
 
         res.json({
             ok: true,
@@ -945,6 +1033,8 @@ const start = async () => {
         console.log(`[boot] JSON body limit: ${REQUEST_BODY_LIMIT}`);
         console.log(`[boot] Database ready: ${initialMeta.counts.sections} sections, ${initialMeta.counts.articles} articles`);
         console.log(`[boot] SQLite sync: ${SQLITE_SYNC_ENABLED ? 'enabled' : 'disabled'}`);
+        console.log(`[boot] Static publish: ${STATIC_PUBLISH_ENABLED ? 'enabled' : 'disabled'}`);
+        console.log(`[boot] Backups: ${BACKUP_SNAPSHOTS_ENABLED ? 'enabled' : 'disabled'}`);
         console.log(`[boot] Server listening on http://0.0.0.0:${PORT} (bound to all interfaces)`);
         console.log(`[boot] Admin login: ${DEFAULT_ADMIN_USERNAME} (password is loaded from .env or stored admin state)`);
         console.log(`[boot] Admin auth file: ${AUTH_FILE_PATH} (${adminAuth.passwordSource || 'unknown'})`);
