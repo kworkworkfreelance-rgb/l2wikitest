@@ -5,12 +5,36 @@
 (function () {
     'use strict';
 
+    var loadPromise = null;
+
+    var publishLoadedData = function (data, source) {
+        window.L2WIKI_SEED_DATA = data;
+        window.L2WIKI_CONTENT = data;
+        window.L2WIKI_DATA_LOADED = true;
+
+        console.log('[data-loader] Data source:', source, Object.keys(data.articles || {}).length, 'articles');
+        window.dispatchEvent(
+            new CustomEvent('l2wiki:data-loaded', {
+                detail: {
+                    payload: data,
+                    source: source,
+                },
+            })
+        );
+
+        return data;
+    };
+
     // Try to load from canonical JSON files
     var loadCanonicalData = function () {
+        if (loadPromise) {
+            return loadPromise;
+        }
+
         // Try loading from the main canonical file
         var canonicalUrl = '/data/canonical/l2wiki-canonical.json';
 
-        return fetch(canonicalUrl)
+        loadPromise = fetch(canonicalUrl)
             .then(function (response) {
                 if (!response.ok) {
                     throw new Error('Failed to load ' + canonicalUrl);
@@ -18,37 +42,24 @@
                 return response.json();
             })
             .then(function (data) {
-                window.L2WIKI_SEED_DATA = data;
-                window.L2WIKI_DATA_LOADED = true;
-                console.log('[data-loader] Loaded canonical data:', Object.keys(data.articles || {}).length, 'articles');
-                
-                // Trigger custom event for other scripts waiting for data
-                window.dispatchEvent(new CustomEvent('l2wiki:data-loaded', { detail: data }));
-                
-                return data;
+                return publishLoadedData(data, 'canonical-json');
             })
             .catch(function (error) {
                 console.warn('[data-loader] Failed to load canonical data:', error.message);
                 console.warn('[data-loader] Falling back to empty database');
-                
-                // Fallback to empty database
-                window.L2WIKI_SEED_DATA = {
-                    site: { name: 'L2Wiki.Su' },
-                    sections: {},
-                    articles: {}
-                };
-                window.L2WIKI_DATA_LOADED = true;
-                
-                window.dispatchEvent(new CustomEvent('l2wiki:data-loaded', { detail: window.L2WIKI_SEED_DATA }));
-                
-                return window.L2WIKI_SEED_DATA;
+
+                return publishLoadedData(
+                    {
+                        site: { name: 'L2Wiki.Su' },
+                        sections: {},
+                        articles: {},
+                    },
+                    'empty-fallback'
+                );
             });
+
+        return loadPromise;
     };
 
-    // Start loading immediately
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', loadCanonicalData);
-    } else {
-        loadCanonicalData();
-    }
+    loadCanonicalData();
 })();

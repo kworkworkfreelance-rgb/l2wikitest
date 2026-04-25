@@ -740,6 +740,12 @@
 
     let currentDatabase = readSeedDatabase();
 
+    const syncExternalDatabase = (database, source = 'external') => {
+        currentDatabase = normalizeDatabase(database || {});
+        notifyListeners(source);
+        return deepClone(currentDatabase);
+    };
+
     const notifyListeners = (source) => {
         const payload = deepClone(currentDatabase);
         listeners.forEach((listener) => {
@@ -794,6 +800,12 @@
         persistLocalSnapshot();
         notifyListeners(source);
         return deepClone(currentDatabase);
+    };
+
+    const setDatabase = (database, source = 'seed-data') => {
+        window.L2WIKI_SEED_DATA = database;
+        window.L2WIKI_CONTENT = database;
+        return syncExternalDatabase(database, source);
     };
 
     const getDatabase = () => deepClone(currentDatabase);
@@ -1156,11 +1168,22 @@
         });
     }
 
+    window.addEventListener('l2wiki:data-loaded', (event) => {
+        const payload = event?.detail?.payload || event?.detail || window.L2WIKI_SEED_DATA || window.L2WIKI_CONTENT;
+
+        if (!payload || typeof payload !== 'object') {
+            return;
+        }
+
+        syncExternalDatabase(payload, event?.detail?.source || 'seed-data');
+    });
+
     window.L2WikiStore = {
         storageKey: STORAGE_KEY,
         eventName: UPDATE_EVENT,
         getDatabase,
         getSeed,
+        setDatabase,
         getStats,
         listSections,
         listArticles,

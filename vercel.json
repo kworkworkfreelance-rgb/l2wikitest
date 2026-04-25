@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm install",
+  "buildCommand": "npm run build",
   "devCommand": "node server.js",
   "installCommand": "npm install",
-  "outputDirectory": null
+  "outputDirectory": "dist-static"
 }
