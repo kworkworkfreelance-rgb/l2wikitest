@@ -650,6 +650,317 @@ const sendCanonicalDatabase = (res) => {
     return true;
 };
 
+const normalizeSearchText = (value = '') =>
+    String(value)
+        .toLowerCase()
+        .replaceAll('ё', 'е')
+        .replace(/[^a-z0-9\u0400-\u04ff]+/g, ' ')
+        .trim();
+
+const stripHtmlTags = (value = '') => String(value || '').replace(/<[^>]+>/g, ' ');
+
+const getSectionById = (database, sectionId) => database?.sections?.[sectionId] || null;
+const getArticleById = (database, articleId) => database?.articles?.[articleId] || null;
+const getSectionGroupById = (section, groupId = '') =>
+    Array.isArray(section?.groups) ? section.groups.find((group) => group?.id === groupId) || null : null;
+
+const buildServerVirtualGroup = (section, groupId = '') => {
+    if (section?.id !== 'quests' || groupId !== 'profession') {
+        return null;
+    }
+
+    const professionGroups = (section.groups || []).filter(
+        (group) => /^profession-\d+$/.test(group.id) || group.id === 'alternative-profession'
+    );
+
+    if (!professionGroups.length) {
+        return null;
+    }
+
+    return {
+        id: 'profession',
+        label: 'На профессию',
+        description: 'Квесты и цепочки для всех смен профессии.',
+        entries: professionGroups.flatMap((group) => group.entries || []),
+    };
+};
+
+const resolveServerGroup = (section, groupId = '') => buildServerVirtualGroup(section, groupId) || getSectionGroupById(section, groupId);
+
+const getServerGroupLeadArticleId = (database, section, group) => {
+    if (!group) {
+        return '';
+    }
+
+    if (group.landingArticleId && getArticleById(database, group.landingArticleId)) {
+        return group.landingArticleId;
+    }
+
+    return (
+        (group.entries || []).find((articleId) => {
+            const article = getArticleById(database, articleId);
+            return article && (!section || article.section === section.id);
+        }) || ''
+    );
+};
+
+const createPublicDatabaseBase = (database) => ({
+    version: Number(database?.version) || 2,
+    updatedAt: database?.updatedAt || new Date().toISOString(),
+    site: deepClone(database?.site || {}),
+    sections: deepClone(database?.sections || {}),
+    articles: {},
+});
+
+const addArticleToPublicDatabase = (target, database, articleId) => {
+    if (!articleId || target.articles[articleId] || !getArticleById(database, articleId)) {
+        return;
+    }
+
+    target.articles[articleId] = deepClone(database.articles[articleId]);
+};
+
+const addNavigationLeadArticles = (target, database) => {
+    Object.values(database?.sections || {}).forEach((section) => {
+        (section.groups || []).forEach((group) => {
+            addArticleToPublicDatabase(target, database, getServerGroupLeadArticleId(database, section, group));
+        });
+    });
+};
+
+const collectQuestGuideEntryText = (entries = []) =>
+    (Array.isArray(entries) ? entries : [])
+        .map((entry) =>
+            [
+                entry?.text,
+                stripHtmlTags(entry?.html),
+                entry?.iconAlt,
+                entry?.location,
+                entry?.npc,
+                entry?.rewardPreview,
+                collectQuestGuideEntryText(entry?.substeps || []),
+            ]
+                .filter(Boolean)
+                .join(' ')
+        )
+        .join(' ');
+
+const collectSearchTextFromBlock = (block = {}) => {
+    if (!block || typeof block !== 'object') {
+        return '';
+    }
+
+    if (block.type === 'prose') {
+        return [block.title, ...(block.paragraphs || [])].filter(Boolean).join(' ');
+    }
+
+    if (block.type === 'list' || block.type === 'steps') {
+        return [block.title, ...(block.items || [])].filter(Boolean).join(' ');
+    }
+
+    if (block.type === 'callout') {
+        return [block.title, block.text, ...(block.items || [])].filter(Boolean).join(' ');
+    }
+
+    if (block.type === 'table') {
+        const columns = (block.columns || []).map((column) => column?.label).filter(Boolean);
+        const rows = (block.rows || []).flatMap((row) => [
+            row?.title,
+            ...(row?.meta || []).flatMap((item) => [item?.label, item?.value]),
+            ...(row?.cells || []).flatMap((cell) => [cell?.value, stripHtmlTags(cell?.html)]),
+        ]);
+
+        return [block.title, ...columns, ...rows].filter(Boolean).join(' ');
+    }
+
+    if (block.type === 'media') {
+        return [block.title, ...(block.items || []).flatMap((item) => [item?.alt, item?.caption])].filter(Boolean).join(' ');
+    }
+
+    if (block.type === 'html') {
+        return [block.title, stripHtmlTags(block.html)].filter(Boolean).join(' ');
+    }
+
+    if (block.type === 'questGuide') {
+        return [
+            ...(block.overviewParagraphs || []),
+            collectQuestGuideEntryText(block.prepItems || []),
+            collectQuestGuideEntryText(block.steps || []),
+            collectQuestGuideEntryText(block.rewards || []),
+        ]
+            .filter(Boolean)
+            .join(' ');
+    }
+
+    return block.title || '';
+};
+
+const buildArticleSearchRecord = (database, article) => {
+    const section = getSectionById(database, article?.section);
+    const group = getSectionGroupById(section, article?.group);
+
+    return {
+        id: article.id,
+        type: 'article',
+        title: article.title || '',
+        summary: article.summary || '',
+        section: article.section || '',
+        sectionTitle: section?.title || '',
+        group: article.group || '',
+        groupTitle: group?.label || '',
+        searchableText: [
+            article.title,
+            article.summary,
+            article.eyebrow,
+            ...(article.aliases || []),
+            ...(article.intro || []),
+            ...(article.meta || []).flatMap((item) => [item?.label, item?.value]),
+            ...(article.sidebarFacts || []).flatMap((item) => [item?.label, item?.value]),
+            ...(article.blocks || []).map(collectSearchTextFromBlock),
+        ]
+            .filter(Boolean)
+            .join(' '),
+    };
+};
+
+const buildSectionSearchRecord = (section) => ({
+    id: section.id,
+    type: 'section',
+    title: section.title || '',
+    summary: section.description || '',
+    section: section.id,
+    sectionTitle: section.title || '',
+    searchableText: [
+        section.title,
+        section.description,
+        ...(section.stats || []).flatMap((item) => [item?.label, item?.value]),
+        ...(section.groups || []).flatMap((group) => [group?.label, group?.description]),
+    ]
+        .filter(Boolean)
+        .join(' '),
+});
+
+const searchPublicDatabase = (database, query, options = {}) => {
+    const normalized = normalizeSearchText(query);
+
+    if (!normalized) {
+        return [];
+    }
+
+    const tokens = normalized.split(/\s+/).filter(Boolean);
+    const limit = Number.isFinite(Number(options.limit)) ? Number(options.limit) : 24;
+    const source = [
+        ...Object.values(database?.sections || {}).map(buildSectionSearchRecord),
+        ...Object.values(database?.articles || {}).map((article) => buildArticleSearchRecord(database, article)),
+    ];
+
+    return source
+        .map((item) => {
+            const title = normalizeSearchText(item.title);
+            const haystack = normalizeSearchText(item.searchableText || `${item.title} ${item.summary || ''}`);
+
+            let score = 0;
+
+            if (title === normalized) {
+                score += 10;
+            }
+
+            if (title.includes(normalized)) {
+                score += 6;
+            }
+
+            if (haystack.includes(normalized)) {
+                score += 4;
+            }
+
+            tokens.forEach((token) => {
+                if (haystack.includes(token)) {
+                    score += 1;
+                }
+            });
+
+            return {
+                ...item,
+                score,
+            };
+        })
+        .filter((item) => item.score > 0)
+        .sort((left, right) => right.score - left.score)
+        .slice(0, limit)
+        .map(({ score, searchableText, ...item }) => item);
+};
+
+const buildPageDataPayload = (database, query = {}) => {
+    const requestedPage = String(query.page || '').trim();
+    const requestedArticleId = String(query.article || '').trim();
+    const requestedSectionId = String(query.section || '').trim();
+    const requestedGroupId = String(query.group || '').trim();
+    const requestedQuery = String(query.query || '').trim();
+    const partialDatabase = createPublicDatabaseBase(database);
+
+    if (requestedPage === 'article') {
+        const article = getArticleById(database, requestedArticleId);
+        addArticleToPublicDatabase(partialDatabase, database, requestedArticleId);
+
+        if (article) {
+            const questGuideBlock = (article.blocks || []).find((block) => block?.type === 'questGuide') || null;
+            const relatedIds = new Set([...(article.related || []), ...(questGuideBlock?.relatedQuestIds || [])]);
+            relatedIds.forEach((articleId) => addArticleToPublicDatabase(partialDatabase, database, articleId));
+        }
+
+        return {
+            ok: true,
+            mode: 'article',
+            isPartial: true,
+            requestedArticleId,
+            database: partialDatabase,
+        };
+    }
+
+    if (requestedPage === 'section') {
+        const fallbackSectionId = Object.values(database.sections || {}).sort(sortByOrder)[0]?.id || '';
+        const sectionId = requestedSectionId || fallbackSectionId;
+        const section = getSectionById(database, sectionId);
+        const activeGroup = section ? resolveServerGroup(section, requestedGroupId) : null;
+
+        if (section && activeGroup) {
+            (activeGroup.entries || []).forEach((articleId) => addArticleToPublicDatabase(partialDatabase, database, articleId));
+            addArticleToPublicDatabase(partialDatabase, database, getServerGroupLeadArticleId(database, section, activeGroup));
+        } else if (section) {
+            (section.groups || []).forEach((group) => {
+                addArticleToPublicDatabase(partialDatabase, database, getServerGroupLeadArticleId(database, section, group));
+            });
+        }
+
+        return {
+            ok: true,
+            mode: 'section',
+            isPartial: true,
+            requestedSectionId: sectionId,
+            requestedGroupId,
+            database: partialDatabase,
+        };
+    }
+
+    if (requestedPage === 'search') {
+        return {
+            ok: true,
+            mode: 'search',
+            isPartial: true,
+            requestedQuery,
+            searchResults: searchPublicDatabase(database, requestedQuery, { limit: 30 }),
+            database: partialDatabase,
+        };
+    }
+
+    return {
+        ok: true,
+        mode: 'canonical',
+        isPartial: false,
+        database: deepClone(database),
+    };
+};
+
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
@@ -810,6 +1121,14 @@ app.get(
             database: wantsFullDatabase ? getDatabaseSnapshot() : null,
             meta: getLiveMeta(),
         });
+    })
+);
+
+app.get(
+    '/api/page-data',
+    asyncRoute(async (req, res) => {
+        const database = getDatabaseSnapshot();
+        sendNoStoreJson(res, buildPageDataPayload(database, req.query || {}));
     })
 );
 

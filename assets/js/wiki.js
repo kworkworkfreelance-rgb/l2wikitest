@@ -33,6 +33,9 @@ const buildSectionUrl = (id, group = '') =>
     `${routes.section}?section=${encodeURIComponent(id)}${group ? `&group=${encodeURIComponent(group)}` : ''}`;
 
 const readDatabase = () => store?.getDatabase?.() || window.L2WIKI_SEED_DATA || { site: { name: 'L2Wiki.Su' }, sections: {}, articles: {} };
+const readPageData = () => window.L2WIKI_PAGE_DATA || null;
+const hasDatabaseContent = (database) => Boolean(Object.keys(database?.sections || {}).length || Object.keys(database?.articles || {}).length);
+const isDataPending = (database) => !window.L2WIKI_DATA_LOADED && !hasDatabaseContent(database);
 const getSection = (database, id) => database.sections?.[id] || null;
 const getArticle = (database, id) => database.articles?.[id] || null;
 const sanitizeInternalHref = (href, database = readDatabase()) => {
@@ -98,6 +101,16 @@ const sanitizeInternalHref = (href, database = readDatabase()) => {
     return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
 };
 const findGroup = (section, groupId) => section?.groups?.find((group) => group.id === groupId) || null;
+
+const PAGED_TABLE_PAGE_SIZE = 25;
+let pagedTableRuntimeId = 0;
+const pagedTableRegistry = new Map();
+
+const resetPagedTableRegistry = () => {
+    pagedTableRuntimeId = 0;
+    pagedTableRegistry.clear();
+};
+
 const buildVirtualGroup = (section, groupId = '') => {
     if (section?.id !== 'quests' || groupId !== 'profession') {
         return null;
@@ -146,10 +159,7 @@ const getGroupLandingArticle = (database, section, group) => {
     return leadArticleId ? getArticle(database, leadArticleId) : null;
 };
 
-const buildGroupNavigationUrl = (database, section, group) => {
-    const landingArticle = getGroupLandingArticle(database, section, group);
-    return landingArticle ? buildArticleUrl(landingArticle.id) : buildSectionUrl(section.id, group.id);
-};
+const buildGroupNavigationUrl = (database, section, group) => buildSectionUrl(section.id, group.id);
 
 const getProfessionRoman = (sectionId, groupId) => {
     if (sectionId !== 'quests') {
@@ -304,6 +314,10 @@ const renderFooter = (database) => {
               timeStyle: 'short',
           }).format(new Date(database.updatedAt))
         : '';
+
+    if (!sections.length && !totalArticles) {
+        return;
+    }
 
     footer.innerHTML = `
         <div class="footer-shell">
@@ -487,6 +501,86 @@ const isSkillTableData = (table = {}) => {
     );
 };
 
+const renderRichTableRows = (rows = [], columns = [], database = readDatabase()) =>
+    rows
+        .map(
+            (row) => `
+                <tr>
+                    ${(row.cells || [])
+                        .map((cell, index) => {
+                            const column = columns[index] || {};
+                            return `<td${column.align ? ` class="is-${escapeHtml(column.align)}"` : ''}>${renderTableCell(cell, database)}</td>`;
+                        })
+                        .join('')}
+                </tr>
+            `
+        )
+        .join('');
+
+const getPagedTablePages = (totalPages, currentPage) => {
+    if (totalPages <= 7) {
+        return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+
+    if (currentPage <= 3) {
+        pages.add(2);
+        pages.add(3);
+        pages.add(4);
+    }
+
+    if (currentPage >= totalPages - 2) {
+        pages.add(totalPages - 1);
+        pages.add(totalPages - 2);
+        pages.add(totalPages - 3);
+    }
+
+    return Array.from(pages)
+        .filter((page) => page >= 1 && page <= totalPages)
+        .sort((left, right) => left - right);
+};
+
+const renderPagedTablePager = (tableId, totalRows, totalPages, currentPage) => {
+    const pages = getPagedTablePages(totalPages, currentPage);
+    let lastPage = 0;
+
+    return `
+        <div class="wiki-rich-table__pager" data-paged-table-pager>
+            <div class="wiki-rich-table__pager-summary">
+                <strong>${totalRows}</strong> записей
+                <span>Страница ${currentPage} из ${totalPages}</span>
+            </div>
+            <div class="wiki-rich-table__pager-actions">
+                <button class="wiki-rich-table__pager-button" type="button" data-table-nav="prev" ${currentPage <= 1 ? 'disabled' : ''}>
+                    Назад
+                </button>
+                <div class="wiki-rich-table__pager-pages" role="navigation" aria-label="Страницы таблицы">
+                    ${pages
+                        .map((page) => {
+                            const gap = page - lastPage > 1 ? '<span class="wiki-rich-table__pager-gap">…</span>' : '';
+                            lastPage = page;
+                            return `${gap}
+                                <button
+                                    class="wiki-rich-table__pager-page ${page === currentPage ? 'is-active' : ''}"
+                                    type="button"
+                                    data-table-page="${page}"
+                                    aria-current="${page === currentPage ? 'page' : 'false'}"
+                                >
+                                    ${page}
+                                </button>
+                            `;
+                        })
+                        .join('')}
+                </div>
+                <button class="wiki-rich-table__pager-button" type="button" data-table-nav="next" ${currentPage >= totalPages ? 'disabled' : ''}>
+                    Далее
+                </button>
+            </div>
+        </div>
+    `;
+};
+
 const renderRichTable = (table, className = 'wiki-rich-table') => {
     const columns = table.columns || [];
     const rows = table.rows || [];
@@ -499,9 +593,25 @@ const renderRichTable = (table, className = 'wiki-rich-table') => {
     const tableClassName = [className, table.compact ? `${className}--compact` : '', isSkillTableData(table) ? `${className}--skills` : '']
         .filter(Boolean)
         .join(' ');
+    const pageSize = Number.isFinite(Number(table.pageSize)) ? Math.max(5, Number(table.pageSize)) : PAGED_TABLE_PAGE_SIZE;
+    const shouldPaginate = rows.length > pageSize;
+    const totalPages = shouldPaginate ? Math.ceil(rows.length / pageSize) : 1;
+    const tableId = shouldPaginate ? `${table.id || 'table'}-${++pagedTableRuntimeId}` : '';
+    const visibleRows = shouldPaginate ? rows.slice(0, pageSize) : rows;
+
+    if (shouldPaginate) {
+        pagedTableRegistry.set(tableId, {
+            columns,
+            rows,
+            pageSize,
+        });
+    }
 
     return `
-        <div class="${tableClassName}">
+        <div
+            class="${tableClassName}${shouldPaginate ? ' is-paginated' : ''}"
+            ${shouldPaginate ? `data-paged-table="${escapeHtml(tableId)}" data-current-page="1" data-total-pages="${totalPages}"` : ''}
+        >
             <table>
                 <thead>
                     <tr>
@@ -516,25 +626,71 @@ const renderRichTable = (table, className = 'wiki-rich-table') => {
                             .join('')}
                     </tr>
                 </thead>
-                <tbody>
-                    ${rows
-                        .map(
-                            (row) => `
-                                <tr>
-                                    ${(row.cells || [])
-                                        .map((cell, index) => {
-                                            const column = columns[index] || {};
-                                            return `<td${column.align ? ` class="is-${escapeHtml(column.align)}"` : ''}>${renderTableCell(cell, database)}</td>`;
-                                        })
-                                        .join('')}
-                                </tr>
-                            `
-                        )
-                        .join('')}
-                </tbody>
+                <tbody>${renderRichTableRows(visibleRows, columns, database)}</tbody>
             </table>
+            ${shouldPaginate ? renderPagedTablePager(tableId, rows.length, totalPages, 1) : ''}
         </div>
     `;
+};
+
+const updatePagedTable = (tableRoot, nextPage) => {
+    if (!tableRoot) {
+        return;
+    }
+
+    const tableId = tableRoot.dataset.pagedTable || '';
+    const state = pagedTableRegistry.get(tableId);
+
+    if (!state) {
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(state.rows.length / state.pageSize));
+    const safePage = Math.min(Math.max(1, Number(nextPage) || 1), totalPages);
+    const offset = (safePage - 1) * state.pageSize;
+    const tbody = tableRoot.querySelector('tbody');
+    const pager = tableRoot.querySelector('[data-paged-table-pager]');
+
+    tableRoot.dataset.currentPage = String(safePage);
+
+    if (tbody) {
+        tbody.innerHTML = renderRichTableRows(state.rows.slice(offset, offset + state.pageSize), state.columns, readDatabase());
+    }
+
+    if (pager) {
+        pager.outerHTML = renderPagedTablePager(tableId, state.rows.length, totalPages, safePage);
+        bindPaginatedTables(tableRoot.parentElement || tableRoot);
+    }
+};
+
+const bindPaginatedTables = (root = document) => {
+    root.querySelectorAll('[data-paged-table]').forEach((tableRoot) => {
+        if (tableRoot.dataset.pagerBound === 'true') {
+            return;
+        }
+
+        tableRoot.dataset.pagerBound = 'true';
+
+        tableRoot.addEventListener('click', (event) => {
+            const pageButton = event.target.closest('[data-table-page]');
+            const navButton = event.target.closest('[data-table-nav]');
+
+            if (pageButton) {
+                event.preventDefault();
+                updatePagedTable(tableRoot, Number(pageButton.dataset.tablePage || 1));
+                return;
+            }
+
+            if (!navButton) {
+                return;
+            }
+
+            event.preventDefault();
+            const currentPage = Number(tableRoot.dataset.currentPage || 1);
+            const delta = navButton.dataset.tableNav === 'next' ? 1 : -1;
+            updatePagedTable(tableRoot, currentPage + delta);
+        });
+    });
 };
 
 const getClassTreeBadge = (label = '') => {
@@ -1088,7 +1244,7 @@ const renderSectionOverviewCards = (database, section) => {
     const cards = (section.groups || [])
         .map((group) => {
             const landingArticle = getGroupLandingArticle(database, section, group);
-            const href = buildGroupNavigationUrl(database, section, group);
+            const href = buildSectionUrl(section.id, group.id);
             const summary = landingArticle?.summary || group.description || section.description || '';
             const iconLabel = String(group.label || section.title || '')
                 .split(/\s+/)
@@ -1412,7 +1568,8 @@ const renderSectionPage = (database) => {
     }
 
     const activeGroup = resolveActiveGroup(section, groupId);
-    const showHubOverview = !activeGroup && section.landingLayout === 'hub';
+    const hasGroupNavigation = Array.isArray(section.groups) && section.groups.length > 0;
+    const showHubOverview = !activeGroup && hasGroupNavigation;
     const breadcrumbs = [
         { label: 'Главная', href: routes.home },
         { label: section.title, href: buildSectionUrl(section.id) },
@@ -1449,7 +1606,7 @@ const renderSectionPage = (database) => {
                 ${activeGroup ? '' : (section.landingBlocks || []).map(renderBlock).join('')}
                 ${showHubOverview ? renderSectionOverviewCards(database, section) : ''}
                 ${showHubOverview ? '' : renderFilteredCatalogTable(section, activeGroup, database)}
-                ${showHubOverview ? '' : renderSectionGroupPanels(database, section, activeGroup?.id || '')}
+                ${activeGroup ? renderSectionGroupPanels(database, section, activeGroup?.id || '') : ''}
             </div>
             <aside class="wiki-stack wiki-stack--aside">
                 <section class="wiki-panel">
@@ -1894,7 +2051,8 @@ const searchDatabase = (database, query) => {
 const renderSearchResults = (database) => {
     const target = document.querySelector('[data-wiki-search]');
     const query = (getParam('query') || '').trim();
-    const results = query ? searchDatabase(database, query) : [];
+    const serverResults = Array.isArray(readPageData()?.searchResults) ? readPageData().searchResults : null;
+    const results = query ? serverResults || searchDatabase(database, query) : [];
 
     if (!target) {
         return;
@@ -1963,6 +2121,10 @@ const renderSidebar = (database) => {
     }
 
     const sections = Object.values(database.sections).sort(sortByOrder);
+
+    if (!sections.length) {
+        return;
+    }
 
     sidebarList.innerHTML = sections
         .map((section) => {
@@ -2192,15 +2354,67 @@ const updateSeoMetadata = (database) => {
     setLinkHref('link[rel="canonical"]', canonicalUrl);
 };
 
+const renderLoadingState = () => {
+    if (currentPage === 'article') {
+        const target = document.querySelector('[data-wiki-article]');
+
+        if (target) {
+            target.innerHTML = `
+                <section class="wiki-empty wiki-empty--loading">
+                    <h1 class="wiki-empty__title">Загружаем материал</h1>
+                    <p class="wiki-empty__text">Подтягиваем статью, навигацию и связанные данные.</p>
+                </section>
+            `;
+        }
+
+        return;
+    }
+
+    if (currentPage === 'section') {
+        const target = document.querySelector('[data-wiki-section]');
+
+        if (target) {
+            target.innerHTML = `
+                <section class="wiki-empty wiki-empty--loading">
+                    <h1 class="wiki-empty__title">Загружаем раздел</h1>
+                    <p class="wiki-empty__text">Готовим группы, карточки и таблицы этого раздела.</p>
+                </section>
+            `;
+        }
+
+        return;
+    }
+
+    if (currentPage === 'search') {
+        const target = document.querySelector('[data-wiki-search]');
+
+        if (target) {
+            target.innerHTML = `
+                <section class="wiki-empty wiki-empty--loading">
+                    <h1 class="wiki-empty__title">Готовим поиск</h1>
+                    <p class="wiki-empty__text">Загружаем актуальный индекс и результаты.</p>
+                </section>
+            `;
+        }
+    }
+};
+
 const renderCurrentPage = () => {
     const database = readDatabase();
 
+    ensureContactsButtons();
+    wireSearchForms();
+
+    if (isDataPending(database)) {
+        renderLoadingState();
+        return;
+    }
+
+    resetPagedTableRegistry();
     renderSidebar(database);
     renderFooter(database);
     hydrateAdSlots(database);
     syncHomeBanners(database);
-    ensureContactsButtons();
-    wireSearchForms();
 
     if (currentPage === 'section') {
         renderSectionPage(database);
@@ -2215,6 +2429,7 @@ const renderCurrentPage = () => {
 
     bindClassTreeTabs(document);
     bindSkillProgressTabs(document);
+    bindPaginatedTables(document);
     updateDocumentTitle(database);
     updateSeoMetadata(database);
 };

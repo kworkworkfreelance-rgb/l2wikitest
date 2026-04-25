@@ -125,6 +125,76 @@
     text-align: right;
 }
 
+.wiki-rich-table.is-paginated,
+.wiki-catalog-table.is-paginated {
+    overflow: hidden;
+}
+
+.wiki-rich-table__pager {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-top: 1px solid rgba(44, 65, 89, 0.12);
+    background: rgba(247, 250, 254, 0.96);
+}
+
+.wiki-rich-table__pager-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    color: #48627d;
+    font-size: 0.92rem;
+}
+
+.wiki-rich-table__pager-actions,
+.wiki-rich-table__pager-pages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.wiki-rich-table__pager-button,
+.wiki-rich-table__pager-page {
+    min-width: 40px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid rgba(44, 65, 89, 0.18);
+    border-radius: 10px;
+    background: #fff;
+    color: #28425d;
+    font: inherit;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.wiki-rich-table__pager-button:hover,
+.wiki-rich-table__pager-page:hover,
+.wiki-rich-table__pager-page.is-active {
+    border-color: rgba(11, 121, 207, 0.28);
+    background: rgba(11, 121, 207, 0.1);
+    color: #0b79cf;
+}
+
+.wiki-rich-table__pager-button[disabled] {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.wiki-rich-table__pager-gap {
+    color: #7a8ea4;
+    padding: 0 2px;
+}
+
+.wiki-empty--loading {
+    border-style: dashed;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 254, 0.94));
+}
+
 .wiki-item-thumb {
     width: 40px;
     height: 40px;

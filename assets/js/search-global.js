@@ -2,6 +2,9 @@
     'use strict';
 
     const store = window.L2WikiStore || null;
+    const body = document.body || null;
+    const currentPage = body && body.dataset ? body.dataset.page || 'home' : 'home';
+    const preferDedicatedSearchPage = currentPage === 'article' || currentPage === 'section' || currentPage === 'search';
 
     const normalize = (value = '') =>
         String(value)
@@ -49,6 +52,10 @@
             .sort((left, right) => right.score - left.score)
             .slice(0, 12);
     };
+
+    if (preferDedicatedSearchPage) {
+        return;
+    }
 
     if (!document.getElementById('searchModal')) {
         document.body.insertAdjacentHTML(
