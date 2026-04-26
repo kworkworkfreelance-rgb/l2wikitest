@@ -78,76 +78,14 @@ const buildSectionUrl = (id, group = '') =>
 
 const readDatabase = () => store?.getDatabase?.() || window.L2WIKI_SEED_DATA || { site: { name: 'L2Wiki.Su' }, sections: {}, articles: {} };
 const readPageData = () => window.L2WIKI_PAGE_DATA || null;
-const hasDatabaseContent = (database) => Boolean(Object.keys(database?.sections || {}).length || Object.keys(database?.articles || {}).length);
+const hasDatabaseContent = (database) =>
+    Boolean(Object.keys(database?.sections || {}).length || Object.keys(database?.articles || {}).length);
 const isDataPending = (database) => !window.L2WIKI_DATA_LOADED && !hasDatabaseContent(database);
 const getSection = (database, id) => database.sections?.[id] || null;
 const getArticle = (database, id) => database.articles?.[id] || null;
 const sanitizeInternalHref = (href, database = readDatabase()) => {
-    if (!href) {
-        return '';
-    }
-
-    if (/^(#|mailto:|tel:)/i.test(href)) {
-        return href;
-    }
-
-    let parsedUrl;
-
-    try {
-        parsedUrl = new URL(href, window.location.origin);
-    } catch {
-        return '';
-    }
-
-    if (parsedUrl.origin !== window.location.origin) {
-        return href;
-    }
-
-    const normalizedPath = parsedUrl.pathname.replace(/\/+$/, '');
-    const currentPath = window.location.pathname.replace(/\/+$/, '');
-    const currentArticleId = getParam('article') || '';
-    const currentSectionId = getParam('section') || '';
-    const currentGroupId = getSectionAliasId(currentSectionId, getParam('group') || '');
-    const targetArticleId = parsedUrl.searchParams.get('article') || '';
-    const targetSectionId = parsedUrl.searchParams.get('section') || '';
-    const targetSection = targetSectionId ? getSection(database, targetSectionId) : null;
-    const targetGroupId = getSectionAliasId(targetSection, parsedUrl.searchParams.get('group') || '');
-
-    if (targetArticleId) {
-        if (!getArticle(database, targetArticleId)) {
-            return '';
-        }
-
-        if (normalizedPath === currentPath && targetArticleId === currentArticleId && !parsedUrl.hash) {
-            return '';
-        }
-    }
-
-    if (targetSectionId) {
-        if (!targetSection) {
-            return '';
-        }
-
-        if (targetGroupId && targetGroupId !== parsedUrl.searchParams.get('group')) {
-            parsedUrl.searchParams.set('group', targetGroupId);
-        }
-
-        if (normalizedPath === currentPath && targetSectionId === currentSectionId && targetGroupId === currentGroupId && !parsedUrl.hash) {
-            return '';
-        }
-    }
-
-    if (
-        !targetArticleId &&
-        !targetSectionId &&
-        normalizedPath === currentPath &&
-        parsedUrl.search === window.location.search &&
-        !parsedUrl.hash
-    ) {
-        return '';
-    }
-
-    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+    // DEBUG: временно отключаем всю логику, просто возвращаем href
+    return href;
 };
 const findGroup = (section, groupId) => section?.groups?.find((group) => group.id === getSectionAliasId(section, groupId)) || null;
 
@@ -247,7 +185,9 @@ const buildGroupNavigationUrl = (database, section, group) => {
     const landingArticle = getGroupLandingArticle(database, section, group);
     const shouldOpenLandingArticle =
         Boolean(group?.landingArticleId && landingArticle) ||
-        (section?.id === 'quests' && (/^profession-\d+$/.test(group?.id || '') || group?.id === 'alternative-profession') && landingArticle);
+        (section?.id === 'quests' &&
+            (/^profession-\d+$/.test(group?.id || '') || group?.id === 'alternative-profession') &&
+            landingArticle);
 
     if (shouldOpenLandingArticle) {
         return buildArticleUrl(landingArticle.id);
@@ -1560,6 +1500,21 @@ const renderSectionOverviewCards = (database, section) => {
     `;
 };
 
+// Map weapon groups to their icons
+const WEAPON_GROUP_ICONS = {
+    swords: '/guns/мечи.jpg',
+    'two-handed': '/guns/двуручныемечи.jpg',
+    bows: '/guns/луки.jpg',
+    daggers: '/guns/кинжалы.jpg',
+    duals: '/guns/дуалы.jpg',
+    blunt: '/guns/дубинки.jpg',
+    'two-handed-blunts': '/guns/двуручныедубинки.jpg',
+    fists: '/guns/кастеты.jpg',
+    pole: '/guns/Алебарды.jpg',
+    rapier: '/guns/двуручные.jpg',
+    'magic-books': '/guns/Магические.jpg',
+};
+
 const buildSectionGroupCatalogRows = (database, section, group) =>
     (group.entries || [])
         .map((articleId) => getArticle(database, articleId))
@@ -1574,18 +1529,22 @@ const buildSectionGroupCatalogRows = (database, section, group) =>
                 article.eyebrow ||
                 section.title;
 
-            // Weapon icon support
-            const iconHtml = article.icon
-                ? `<img class="catalog-item-icon" src="${escapeHtml(article.icon)}" alt="" loading="lazy" />`
-                : '';
+            // Weapon icon support - use article.icon or auto-assign based on group
+            let iconUrl = article.icon;
+            if (!iconUrl && section.id === 'weapons' && group?.id) {
+                iconUrl = WEAPON_GROUP_ICONS[group.id];
+            }
+            const iconHtml = iconUrl ? `<img class="catalog-item-icon" src="${escapeHtml(iconUrl)}" alt="" loading="lazy" />` : '';
+
+            // Use html field when we have icon, so renderTableCell doesn't escape the HTML
+            const titleCell = iconHtml
+                ? { href: buildArticleUrl(article.id), html: `${iconHtml}${escapeHtml(article.title)}` }
+                : { href: buildArticleUrl(article.id), value: article.title };
 
             return {
                 id: article.id,
                 cells: [
-                    {
-                        href: buildArticleUrl(article.id),
-                        value: `${iconHtml}${article.title}`,
-                    },
+                    titleCell,
                     {
                         value: detail,
                     },
@@ -2359,7 +2318,7 @@ const renderArticlePage = (database) => {
                 ? `${skillArticleParts.before}${renderSkillProgression(skillArticleParts.skillTables)}${skillArticleParts.after}`
                 : gradeArticleParts
                   ? `${gradeArticleParts.before}${renderGradeBrowser(gradeArticleParts.gradeTables, articleForRender.title)}${gradeArticleParts.after}`
-                : (articleForRender.blocks || []).map(renderBlock).join('');
+                  : (articleForRender.blocks || []).map(renderBlock).join('');
     const relatedIds = isFlatArticle
         ? []
         : Array.from(new Set([...(articleForRender.related || []), ...(questGuideBlock?.relatedQuestIds || [])])).filter(Boolean);
@@ -2482,7 +2441,9 @@ const renderSearchResults = (database) => {
                                     (item) => `
                                         <article class="knowledge-card">
                                             ${renderKnowledgeCardMedia(
-                                                item.type === 'article' ? getPreferredArticleHeroImage(getArticle(database, item.id), item.previewImage) : item.previewImage,
+                                                item.type === 'article'
+                                                    ? getPreferredArticleHeroImage(getArticle(database, item.id), item.previewImage)
+                                                    : item.previewImage,
                                                 item.title
                                             )}
                                             <div class="knowledge-card__head">
@@ -2811,7 +2772,11 @@ const updateSeoMetadata = (database) => {
         const section = database.sections[sectionId];
         title = `${section.title} | ${siteName}`;
         description = section.description || description;
-        imageUrl = toAbsoluteUrl((section.groups || []).find((group) => group?.iconSrc)?.iconSrc || database.site?.socialImage || '/assets/img/base/logo-like.png');
+        imageUrl = toAbsoluteUrl(
+            (section.groups || []).find((group) => group?.iconSrc)?.iconSrc ||
+                database.site?.socialImage ||
+                '/assets/img/base/logo-like.png'
+        );
     } else if (query) {
         title = `Поиск: ${query} | ${siteName}`;
         description = `Результаты поиска по запросу "${query}" на ${siteName}.`;
@@ -2926,5 +2891,3 @@ window.addEventListener('l2wiki:weapons-data-loaded', function (event) {
     console.log('[Wiki] Weapons data loaded, re-rendering page', event.detail);
     renderCurrentPage();
 });
-
-
