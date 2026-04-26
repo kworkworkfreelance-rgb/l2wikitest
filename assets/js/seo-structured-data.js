@@ -59,7 +59,7 @@
             'name': data.site.name,
             'alternateName': ['L2Wiki', 'Lineage II Wiki', 'L2INT'],
             'url': siteRoot + '/',
-            'description': data.site.subtitle,
+            'description': data.site.seoDescription || data.site.subtitle,
             'inLanguage': 'ru-RU',
             'about': {
                 '@type': 'VideoGame',
@@ -83,12 +83,14 @@
         if (articleId && data.articles[articleId]) {
             const article = data.articles[articleId];
             const section = data.sections[article.section];
+            const imageUrl = article.heroImage ? new URL(article.heroImage, siteRoot).href : new URL(data.site?.socialImage || '/assets/img/base/logo-like.png', siteRoot).href;
             
             schemaData = {
                 '@context': 'https://schema.org',
                 '@type': 'Article',
                 'headline': article.title,
                 'description': article.summary,
+                'image': [imageUrl],
                 'inLanguage': 'ru-RU',
                 'author': {
                     '@type': 'Organization',
@@ -118,12 +120,14 @@
         // Section page
         else if (sectionId && data.sections[sectionId]) {
             const section = data.sections[sectionId];
+            const sectionImage = (section.groups || []).find((group) => group?.iconSrc)?.iconSrc || data.site?.socialImage || '/assets/img/base/logo-like.png';
             
             schemaData = {
                 '@context': 'https://schema.org',
                 '@type': 'CollectionPage',
                 'name': section.title + ' - ' + data.site.name,
                 'description': section.description,
+                'image': [new URL(sectionImage, siteRoot).href],
                 'inLanguage': 'ru-RU',
                 'url': url,
                 'isPartOf': {
@@ -142,7 +146,8 @@
                 ...website,
                 '@type': 'WebPage',
                 'name': data.site.name + ' - База знаний Lineage II',
-                'description': data.site.subtitle
+                'description': data.site.seoDescription || data.site.subtitle,
+                'image': [new URL(data.site?.socialImage || '/assets/img/base/logo-like.png', siteRoot).href]
             };
         }
 

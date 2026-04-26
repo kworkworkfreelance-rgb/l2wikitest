@@ -466,18 +466,22 @@ const loadDatabaseFromDisk = () => {
     };
 };
 
-const buildMeta = (database) => ({
-    version: Number(database?.version) || 2,
-    updatedAt: database?.updatedAt || new Date().toISOString(),
-    site: {
-        name: database?.site?.name || '',
-        subtitle: database?.site?.subtitle || '',
-    },
-    counts: {
-        sections: Object.keys(database?.sections || {}).length,
-        articles: Object.keys(database?.articles || {}).length,
-    },
-});
+const buildMeta = (database) => {
+    const site = normalizeSite(database?.site);
+
+    return {
+        version: Number(database?.version) || 2,
+        updatedAt: database?.updatedAt || new Date().toISOString(),
+        site: {
+            name: site.name || '',
+            subtitle: site.subtitle || '',
+        },
+        counts: {
+            sections: Object.keys(database?.sections || {}).length,
+            articles: Object.keys(database?.articles || {}).length,
+        },
+    };
+};
 
 const cloneDatabase = (database) => deepClone(database || {});
 const prepareDatabaseForPublish = (database) => {
@@ -497,7 +501,21 @@ const loadMetaFromDisk = () => {
 
     if (metaPath) {
         try {
-            return JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            const site = normalizeSite(meta?.site || {});
+
+            return {
+                version: Number(meta?.version) || 2,
+                updatedAt: meta?.updatedAt || new Date().toISOString(),
+                site: {
+                    name: site.name,
+                    subtitle: site.subtitle,
+                },
+                counts: {
+                    sections: Number(meta?.counts?.sections) || 0,
+                    articles: Number(meta?.counts?.articles) || 0,
+                },
+            };
         } catch (error) {
             console.warn(`[boot] Failed to parse canonical meta: ${error.message}`);
         }
@@ -722,6 +740,22 @@ const getSectionById = (database, sectionId) => database?.sections?.[sectionId] 
 const getArticleById = (database, articleId) => database?.articles?.[articleId] || null;
 const getSectionGroupById = (section, groupId = '') =>
     Array.isArray(section?.groups) ? section.groups.find((group) => group?.id === groupId) || null : null;
+const LEGACY_GROUP_ALIASES = {
+    quests: {
+        epic: 'epic-bosses',
+        'profession-4': 'alternative-profession',
+        profession4: 'alternative-profession',
+        'fourth-profession': 'alternative-profession',
+    },
+};
+
+const normalizeServerGroupId = (section, groupId = '') => {
+    if (!section || !groupId) {
+        return groupId;
+    }
+
+    return LEGACY_GROUP_ALIASES[section.id]?.[groupId] || groupId;
+};
 
 const buildServerVirtualGroup = (section, groupId = '') => {
     if (section?.id !== 'quests' || groupId !== 'profession') {
@@ -744,7 +778,10 @@ const buildServerVirtualGroup = (section, groupId = '') => {
     };
 };
 
-const resolveServerGroup = (section, groupId = '') => buildServerVirtualGroup(section, groupId) || getSectionGroupById(section, groupId);
+const resolveServerGroup = (section, groupId = '') => {
+    const normalizedGroupId = normalizeServerGroupId(section, groupId);
+    return buildServerVirtualGroup(section, normalizedGroupId) || getSectionGroupById(section, normalizedGroupId);
+};
 
 const getServerGroupLeadArticleId = (database, section, group) => {
     if (!group) {
@@ -982,6 +1019,7 @@ const buildPageDataPayload = (database, query = {}) => {
         const fallbackSectionId = Object.values(database.sections || {}).sort(sortByOrder)[0]?.id || '';
         const sectionId = requestedSectionId || fallbackSectionId;
         const section = getSectionById(database, sectionId);
+        const normalizedGroupId = section ? normalizeServerGroupId(section, requestedGroupId) : requestedGroupId;
         const activeGroup = section ? resolveServerGroup(section, requestedGroupId) : null;
 
         if (section && activeGroup) {
@@ -999,6 +1037,7 @@ const buildPageDataPayload = (database, query = {}) => {
             isPartial: true,
             requestedSectionId: sectionId,
             requestedGroupId,
+            resolvedGroupId: normalizedGroupId,
             database: partialDatabase,
         };
     }

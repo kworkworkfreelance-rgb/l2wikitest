@@ -586,6 +586,9 @@
             description: toStringValue(source.description),
             entries: normalizeTextArray(source.entries),
             order: toNumber(source.order, defaultOrder),
+            landingArticleId: normalizeId(source.landingArticleId),
+            iconSrc: toStringValue(source.iconSrc),
+            iconAlt: toStringValue(source.iconAlt),
         };
     };
 
@@ -633,6 +636,7 @@
             sidebarFacts: normalizeFactArray(source.sidebarFacts),
             source: normalizeSource(source.source),
             aliases: normalizeAliasArray(source.aliases),
+            heroImage: toStringValue(source.heroImage),
             blocks: toArray(source.blocks).map((block, index) => normalizeBlock(block, `${id}-block-${index + 1}`)),
         };
 
@@ -644,12 +648,28 @@
         return normalized;
     };
 
+    const normalizeSiteName = (value) => {
+        const name = toStringValue(value);
+
+        if (!name) {
+            return 'L2Wiki.Su';
+        }
+
+        return ['LWiki.Su', 'LWiki.su', 'lwiki.su'].includes(name) ? 'L2Wiki.Su' : name;
+    };
+
     const normalizeSite = (site) => {
         const source = isObject(site) ? site : {};
+        const name = normalizeSiteName(source.name);
         return {
-            name: toStringValue(source.name) || 'L2Wiki.Su',
+            name,
             subtitle: toStringValue(source.subtitle) || 'База знаний по Lineage II',
             ads: normalizeAds(source.ads),
+            seoDescription:
+                toStringValue(source.seoDescription) ||
+                `${name} — база знаний Lineage II: квесты, экипировка, NPC, локации и гайды по классическим хроникам.`,
+            socialImage: toStringValue(source.socialImage) || '/assets/img/base/logo-like.png',
+            socialImageAlt: toStringValue(source.socialImageAlt) || name,
         };
     };
 

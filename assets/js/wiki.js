@@ -17,6 +17,15 @@ const FEATURED_ARTICLES = [
     { id: 'spoiler-guide', title: 'ГАЙД СПОЙЛЕРУ', text: 'Маршруты, добыча ресурсов и полезные связки для фарма.' },
 ];
 
+const LEGACY_GROUP_ALIASES = {
+    quests: {
+        epic: 'epic-bosses',
+        'profession-4': 'alternative-profession',
+        profession4: 'alternative-profession',
+        'fourth-profession': 'alternative-profession',
+    },
+};
+
 const escapeHtml = (value = '') =>
     String(value)
         .replaceAll('&', '&amp;')
@@ -26,11 +35,16 @@ const escapeHtml = (value = '') =>
         .replaceAll("'", '&#39;');
 
 const stripHtml = (value = '') => String(value).replace(/<[^>]+>/g, ' ');
+const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const getParam = (key) => new URLSearchParams(window.location.search).get(key);
+const getSectionAliasId = (sectionOrId, groupId = '') => {
+    const sectionId = typeof sectionOrId === 'string' ? sectionOrId : sectionOrId?.id || '';
+    return LEGACY_GROUP_ALIASES[sectionId]?.[groupId] || groupId;
+};
 const buildArticleUrl = (id) => `${routes.article}?article=${encodeURIComponent(id)}`;
 const buildSectionUrl = (id, group = '') =>
-    `${routes.section}?section=${encodeURIComponent(id)}${group ? `&group=${encodeURIComponent(group)}` : ''}`;
+    `${routes.section}?section=${encodeURIComponent(id)}${group ? `&group=${encodeURIComponent(getSectionAliasId(id, group))}` : ''}`;
 
 const readDatabase = () => store?.getDatabase?.() || window.L2WIKI_SEED_DATA || { site: { name: 'L2Wiki.Su' }, sections: {}, articles: {} };
 const readPageData = () => window.L2WIKI_PAGE_DATA || null;
@@ -63,10 +77,11 @@ const sanitizeInternalHref = (href, database = readDatabase()) => {
     const currentPath = window.location.pathname.replace(/\/+$/, '');
     const currentArticleId = getParam('article') || '';
     const currentSectionId = getParam('section') || '';
-    const currentGroupId = getParam('group') || '';
+    const currentGroupId = getSectionAliasId(currentSectionId, getParam('group') || '');
     const targetArticleId = parsedUrl.searchParams.get('article') || '';
     const targetSectionId = parsedUrl.searchParams.get('section') || '';
-    const targetGroupId = parsedUrl.searchParams.get('group') || '';
+    const targetSection = targetSectionId ? getSection(database, targetSectionId) : null;
+    const targetGroupId = getSectionAliasId(targetSection, parsedUrl.searchParams.get('group') || '');
 
     if (targetArticleId) {
         if (!getArticle(database, targetArticleId)) {
@@ -79,8 +94,12 @@ const sanitizeInternalHref = (href, database = readDatabase()) => {
     }
 
     if (targetSectionId) {
-        if (!getSection(database, targetSectionId)) {
+        if (!targetSection) {
             return '';
+        }
+
+        if (targetGroupId && targetGroupId !== parsedUrl.searchParams.get('group')) {
+            parsedUrl.searchParams.set('group', targetGroupId);
         }
 
         if (normalizedPath === currentPath && targetSectionId === currentSectionId && targetGroupId === currentGroupId && !parsedUrl.hash) {
@@ -100,7 +119,7 @@ const sanitizeInternalHref = (href, database = readDatabase()) => {
 
     return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
 };
-const findGroup = (section, groupId) => section?.groups?.find((group) => group.id === groupId) || null;
+const findGroup = (section, groupId) => section?.groups?.find((group) => group.id === getSectionAliasId(section, groupId)) || null;
 
 const PAGED_TABLE_PAGE_SIZE = 25;
 let pagedTableRuntimeId = 0;
@@ -111,8 +130,39 @@ const resetPagedTableRegistry = () => {
     pagedTableRegistry.clear();
 };
 
+const scrollHorizontalActiveItemIntoView = (container, item) => {
+    if (!container || !item || typeof item.scrollIntoView !== 'function') {
+        return;
+    }
+
+    item.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+    });
+};
+
+const syncCanonicalRoute = (database = readDatabase()) => {
+    if (currentPage !== 'section') {
+        return;
+    }
+
+    const sectionId = getParam('section') || '';
+    const groupId = getParam('group') || '';
+    const section = getSection(database, sectionId);
+    const resolvedGroupId = readPageData()?.resolvedGroupId || getSectionAliasId(section, groupId);
+
+    if (!section || !groupId || !resolvedGroupId || resolvedGroupId === groupId) {
+        return;
+    }
+
+    window.history.replaceState({}, '', buildSectionUrl(section.id, resolvedGroupId));
+};
+
 const buildVirtualGroup = (section, groupId = '') => {
-    if (section?.id !== 'quests' || groupId !== 'profession') {
+    const normalizedGroupId = getSectionAliasId(section, groupId);
+
+    if (section?.id !== 'quests' || normalizedGroupId !== 'profession') {
         return null;
     }
 
@@ -131,14 +181,18 @@ const buildVirtualGroup = (section, groupId = '') => {
         entries: professionGroups.flatMap((group) => group.entries || []),
     };
 };
-const resolveActiveGroup = (section, groupId = '') => buildVirtualGroup(section, groupId) || (groupId ? findGroup(section, groupId) : null);
+const resolveActiveGroup = (section, groupId = '') => {
+    const normalizedGroupId = getSectionAliasId(section, groupId);
+    return buildVirtualGroup(section, normalizedGroupId) || (normalizedGroupId ? findGroup(section, normalizedGroupId) : null);
+};
 const resolveRenderableGroups = (section, groupId = '') => {
-    const virtualGroup = buildVirtualGroup(section, groupId);
+    const normalizedGroupId = getSectionAliasId(section, groupId);
+    const virtualGroup = buildVirtualGroup(section, normalizedGroupId);
     if (virtualGroup) {
         return [virtualGroup];
     }
 
-    return groupId ? section.groups.filter((group) => group.id === groupId) : section.groups;
+    return normalizedGroupId ? section.groups.filter((group) => group.id === normalizedGroupId) : section.groups;
 };
 const getGroupLandingArticle = (database, section, group) => {
     if (!group) {
@@ -281,8 +335,8 @@ const getFooterTrail = (database) => {
 
         return [
             home,
-            section ? { label: section.title, href: buildSectionUrl(section.id, article.group) } : null,
-            group ? { label: group.label, href: buildSectionUrl(section.id, group.id) } : null,
+            section ? { label: section.title, href: buildSectionUrl(section.id) } : null,
+            group ? { label: group.label, href: buildGroupNavigationUrl(database, section, group) } : null,
             article ? { label: article.title } : { label: 'Материал' },
         ].filter(Boolean);
     }
@@ -684,7 +738,16 @@ const updatePagedTable = (tableRoot, nextPage) => {
     if (pager) {
         pager.outerHTML = renderPagedTablePager(tableId, state.rows.length, totalPages, safePage);
         bindPaginatedTables(tableRoot.parentElement || tableRoot);
+        const activePage = tableRoot.querySelector('.wiki-rich-table__pager-page.is-active');
+        const pageTrack = tableRoot.querySelector('.wiki-rich-table__pager-pages');
+        scrollHorizontalActiveItemIntoView(pageTrack, activePage);
     }
+
+    tableRoot.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+        inline: 'nearest',
+    });
 };
 
 const bindPaginatedTables = (root = document) => {
@@ -714,6 +777,10 @@ const bindPaginatedTables = (root = document) => {
             const delta = navButton.dataset.tableNav === 'next' ? 1 : -1;
             updatePagedTable(tableRoot, currentPage + delta);
         });
+
+        const activePage = tableRoot.querySelector('.wiki-rich-table__pager-page.is-active');
+        const pageTrack = tableRoot.querySelector('.wiki-rich-table__pager-pages');
+        scrollHorizontalActiveItemIntoView(pageTrack, activePage);
     });
 };
 
@@ -1041,6 +1108,118 @@ const renderQuestCompatContent = (article) => {
 };
 
 const findQuestGuideBlock = (article) => (article?.blocks || []).find((block) => block?.type === 'questGuide') || null;
+
+const collectQuestGuideIcons = (entries = [], bucket = []) => {
+    (Array.isArray(entries) ? entries : []).forEach((entry) => {
+        if (entry?.iconSrc) {
+            bucket.push(entry.iconSrc);
+        }
+
+        const html = String(entry?.html || '');
+        const matches = html.matchAll(/<img\b[^>]*src=["']([^"']+)["'][^>]*>/gi);
+        for (const match of matches) {
+            if (match?.[1]) {
+                bucket.push(match[1]);
+            }
+        }
+
+        if (entry?.substeps?.length) {
+            collectQuestGuideIcons(entry.substeps, bucket);
+        }
+    });
+
+    return bucket;
+};
+
+const stripRepeatedQuestIcon = (html = '', iconSrc = '') => {
+    if (!html || !iconSrc) {
+        return html;
+    }
+
+    return String(html)
+        .replace(new RegExp(`<img\\b[^>]*src=["']${escapeRegex(iconSrc)}["'][^>]*>`, 'gi'), '')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/>\s+</g, '><')
+        .trim();
+};
+
+const getDominantQuestIcon = (block) => {
+    const icons = collectQuestGuideIcons([...(block?.prepItems || []), ...(block?.steps || []), ...(block?.rewards || [])]);
+
+    if (!icons.length) {
+        return '';
+    }
+
+    const counts = new Map();
+    icons.forEach((iconSrc) => counts.set(iconSrc, (counts.get(iconSrc) || 0) + 1));
+
+    const [topIcon = '', topCount = 0] = Array.from(counts.entries()).sort((left, right) => right[1] - left[1])[0] || [];
+    return topIcon && topCount >= 4 && topCount / icons.length >= 0.45 ? topIcon : '';
+};
+
+const normalizeQuestGuideEntriesForRender = (entries = [], repeatedIconSrc = '') =>
+    (Array.isArray(entries) ? entries : []).map((entry) => ({
+        ...entry,
+        html: entry?.html ? stripRepeatedQuestIcon(entry.html, repeatedIconSrc) : entry?.html,
+        iconSrc: entry?.iconSrc === repeatedIconSrc ? '' : entry?.iconSrc || '',
+        substeps: entry?.substeps?.length ? normalizeQuestGuideEntriesForRender(entry.substeps, repeatedIconSrc) : [],
+    }));
+
+const prepareQuestGuideBlockForRender = (block, article = null) => {
+    if (!block) {
+        return null;
+    }
+
+    const repeatedIconSrc = getDominantQuestIcon(block);
+    const articleHeroImage = String(article?.heroImage || '').trim();
+    const seenHeroMedia = new Set();
+    const heroMedia = (Array.isArray(block.heroMedia) ? block.heroMedia : []).filter((item) => {
+        const src = String(item?.src || '').trim();
+
+        if (!src || src === articleHeroImage || seenHeroMedia.has(src)) {
+            return false;
+        }
+
+        seenHeroMedia.add(src);
+        return true;
+    });
+
+    return {
+        ...block,
+        heroMedia,
+        prepItems: normalizeQuestGuideEntriesForRender(block.prepItems || [], repeatedIconSrc),
+        steps: normalizeQuestGuideEntriesForRender(block.steps || [], repeatedIconSrc),
+        rewards: normalizeQuestGuideEntriesForRender(block.rewards || [], repeatedIconSrc),
+    };
+};
+
+const normalizeArticleBlocksForRender = (article) => {
+    const heroImage = String(article?.heroImage || '').trim();
+    const blocks = Array.isArray(article?.blocks) ? article.blocks : [];
+
+    if (!heroImage || !blocks.length) {
+        return article;
+    }
+
+    let changed = false;
+    const normalizedBlocks = blocks.filter((block) => {
+        if (block?.type !== 'media') {
+            return true;
+        }
+
+        const items = Array.isArray(block.items) ? block.items : [];
+        const isDuplicateHeroMedia = items.length === 1 && String(items[0]?.src || '').trim() === heroImage;
+
+        if (isDuplicateHeroMedia) {
+            changed = true;
+            return false;
+        }
+
+        return true;
+    });
+
+    return changed ? { ...article, blocks: normalizedBlocks } : article;
+};
 
 const renderQuestGuideEntryMarkup = (entry, fallbackText = '') => {
     if (!entry) {
@@ -1428,6 +1607,76 @@ const renderSkillProgression = (tables = []) => {
     `;
 };
 
+const isGradeTableBlock = (block) => block?.type === 'table' && /^(No Grade|[A-Z]\d{0,2} Grade)$/i.test(String(block?.title || '').trim());
+
+const getGradeArticleParts = (article) => {
+    const blocks = article?.blocks || [];
+    const gradeTables = blocks.filter(isGradeTableBlock);
+
+    if (gradeTables.length < 3) {
+        return null;
+    }
+
+    const gradeIds = new Set(gradeTables.map((block) => block.id));
+    const firstGradeIndex = blocks.findIndex((block) => gradeIds.has(block.id));
+    const lastGradeIndex = Math.max(...blocks.map((block, index) => (gradeIds.has(block.id) ? index : -1)));
+
+    return {
+        before: blocks.slice(0, Math.max(0, firstGradeIndex)).map(renderBlock).join(''),
+        gradeTables,
+        after: blocks
+            .slice(lastGradeIndex + 1)
+            .map(renderBlock)
+            .join(''),
+    };
+};
+
+const renderGradeBrowser = (tables = [], articleTitle = '') => {
+    if (!tables.length) {
+        return '';
+    }
+
+    const activeGrade = tables[0].title || 'No Grade';
+
+    return `
+        <section class="wiki-panel rich-block rich-block--grades" data-grade-browser data-active-grade="${escapeHtml(activeGrade)}">
+            <div class="wiki-panel__head">
+                <div>
+                    <span class="wiki-panel__eyebrow">${escapeHtml(articleTitle || 'Lineage II')}</span>
+                    <h2 class="wiki-panel__title">Грейды</h2>
+                </div>
+            </div>
+            <div class="grade-browser">
+                <div class="grade-browser__tabs" role="tablist" aria-label="Грейды">
+                    ${tables
+                        .map(
+                            (table) => `
+                                <button class="grade-browser__tab" type="button" role="tab" data-grade-tab="${escapeHtml(table.title || '')}">
+                                    ${escapeHtml(table.title || '')}
+                                </button>
+                            `
+                        )
+                        .join('')}
+                </div>
+                <div class="grade-browser__panes">
+                    ${tables
+                        .map(
+                            (table) => `
+                                <section class="grade-browser__pane" data-grade-pane="${escapeHtml(table.title || '')}" hidden>
+                                    <div class="grade-browser__table">
+                                        <h3 class="grade-browser__title">${escapeHtml(table.title || '')}</h3>
+                                        ${renderRichTable(table)}
+                                    </div>
+                                </section>
+                            `
+                        )
+                        .join('')}
+                </div>
+            </div>
+        </section>
+    `;
+};
+
 const renderBlock = (block) => {
     if (!block) {
         return '';
@@ -1576,6 +1825,7 @@ const renderSectionPage = (database) => {
     const sectionId = getParam('section') || Object.values(database.sections).sort(sortByOrder)[0]?.id;
     const groupId = getParam('group') || '';
     const section = sectionId ? getSection(database, sectionId) : null;
+    const normalizedGroupId = getSectionAliasId(section, groupId);
 
     if (!target) {
         return;
@@ -1592,7 +1842,7 @@ const renderSectionPage = (database) => {
         return;
     }
 
-    const activeGroup = resolveActiveGroup(section, groupId);
+    const activeGroup = resolveActiveGroup(section, normalizedGroupId);
     const hasGroupNavigation = Array.isArray(section.groups) && section.groups.length > 0;
     const showHubOverview = !activeGroup && hasGroupNavigation;
     const breadcrumbs = [
@@ -1615,11 +1865,11 @@ const renderSectionPage = (database) => {
             ${renderFactList(section.landingSidebarFacts?.length ? section.landingSidebarFacts : section.stats)}
         </section>
         <nav class="section-switcher" aria-label="Группы раздела">
-            <a class="section-switcher__link ${!groupId ? 'is-active' : ''}" href="${buildSectionUrl(section.id)}">Все материалы</a>
+            <a class="section-switcher__link ${!normalizedGroupId ? 'is-active' : ''}" href="${buildSectionUrl(section.id)}">Все материалы</a>
             ${section.groups
                 .map(
                     (group) => `
-                        <a class="section-switcher__link ${group.id === groupId ? 'is-active' : ''}" href="${buildSectionUrl(section.id, group.id)}">
+                        <a class="section-switcher__link ${group.id === normalizedGroupId ? 'is-active' : ''}" href="${buildGroupNavigationUrl(database, section, group)}">
                             ${escapeHtml(group.label)}
                         </a>
                     `
@@ -1803,16 +2053,18 @@ const bindArchiveDetailTabs = (target) => {
 
         const activate = (hash) => {
             const cleanHash = String(hash || '').replace(/^#/, '');
+            const activeLink = links.find((link) => link.getAttribute('href') === `#${cleanHash}`) || links[0];
+            const nextHash = (activeLink?.getAttribute('href') || '').replace(/^#/, '');
 
             links.forEach((link) => {
                 const item = link.closest('.archive-detail__tab-item');
-                const active = link.getAttribute('href') === `#${cleanHash}`;
+                const active = link === activeLink;
                 link.classList.toggle('is-active', active);
                 item?.classList.toggle('is-active', active);
             });
 
             panes.forEach((pane) => {
-                const isActive = pane.id === cleanHash;
+                const isActive = pane.id === nextHash;
                 pane.classList.toggle('active', isActive);
 
                 if (isActive) {
@@ -1830,6 +2082,8 @@ const bindArchiveDetailTabs = (target) => {
                     });
                 }
             });
+
+            scrollHorizontalActiveItemIntoView(tabList, activeLink);
         };
 
         const initialHash =
@@ -1841,9 +2095,6 @@ const bindArchiveDetailTabs = (target) => {
                 event.preventDefault();
                 const href = link.getAttribute('href') || '';
                 activate(href);
-                const cleanHash = href.replace(/^#/, '');
-                const targetPane = panes.find((pane) => pane.id === cleanHash);
-                targetPane?.scrollIntoView({ block: 'start', behavior: 'smooth' });
             });
         });
 
@@ -1869,17 +2120,22 @@ const bindClassTreeTabs = (target) => {
         }
 
         const activate = (tabId) => {
+            const activeTab = tabs.find((tab) => tab.dataset.classTreeTab === tabId) || tabs[0];
+            const nextTabId = activeTab?.dataset.classTreeTab || '';
+
             tabs.forEach((tab) => {
-                const isActive = tab.dataset.classTreeTab === tabId;
+                const isActive = tab.dataset.classTreeTab === nextTabId;
                 tab.classList.toggle('is-active', isActive);
                 tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
             });
 
             panes.forEach((pane) => {
-                const isActive = pane.dataset.classTreePane === tabId;
+                const isActive = pane.dataset.classTreePane === nextTabId;
                 pane.classList.toggle('is-active', isActive);
                 pane.hidden = !isActive;
             });
+
+            scrollHorizontalActiveItemIntoView(root.querySelector('.class-tree__tabs'), activeTab);
         };
 
         tabs.forEach((tab) => {
@@ -1911,17 +2167,22 @@ const bindSkillProgressTabs = (target) => {
         }
 
         const activate = (level) => {
+            const activeTab = tabs.find((tab) => tab.dataset.skillLevel === level) || tabs[0];
+            const nextLevel = activeTab?.dataset.skillLevel || '';
+
             tabs.forEach((tab) => {
-                const isActive = tab.dataset.skillLevel === level;
+                const isActive = tab.dataset.skillLevel === nextLevel;
                 tab.classList.toggle('is-active', isActive);
                 tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
             });
 
             panes.forEach((pane) => {
-                const isActive = pane.dataset.skillPane === level;
+                const isActive = pane.dataset.skillPane === nextLevel;
                 pane.hidden = !isActive;
                 pane.classList.toggle('is-active', isActive);
             });
+
+            scrollHorizontalActiveItemIntoView(root.querySelector('.skill-progress__tabs'), activeTab);
         };
 
         tabs.forEach((tab) => {
@@ -1931,6 +2192,53 @@ const bindSkillProgressTabs = (target) => {
         });
 
         activate(root.dataset.activeLevel || tabs[0].dataset.skillLevel || '');
+        root.dataset.tabsBound = 'true';
+    });
+};
+
+const bindGradeBrowsers = (target) => {
+    if (!target) {
+        return;
+    }
+
+    target.querySelectorAll('[data-grade-browser]').forEach((root) => {
+        if (root.dataset.tabsBound === 'true') {
+            return;
+        }
+
+        const tabs = Array.from(root.querySelectorAll('[data-grade-tab]'));
+        const panes = Array.from(root.querySelectorAll('[data-grade-pane]'));
+
+        if (!tabs.length || !panes.length) {
+            return;
+        }
+
+        const activate = (grade) => {
+            const activeTab = tabs.find((tab) => tab.dataset.gradeTab === grade) || tabs[0];
+            const nextGrade = activeTab?.dataset.gradeTab || '';
+
+            tabs.forEach((tab) => {
+                const isActive = tab.dataset.gradeTab === nextGrade;
+                tab.classList.toggle('is-active', isActive);
+                tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+
+            panes.forEach((pane) => {
+                const isActive = pane.dataset.gradePane === nextGrade;
+                pane.hidden = !isActive;
+                pane.classList.toggle('is-active', isActive);
+            });
+
+            scrollHorizontalActiveItemIntoView(root.querySelector('.grade-browser__tabs'), activeTab);
+        };
+
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                activate(tab.dataset.gradeTab || '');
+            });
+        });
+
+        activate(root.dataset.activeGrade || tabs[0].dataset.gradeTab || '');
         root.dataset.tabsBound = 'true';
     });
 };
@@ -1963,40 +2271,46 @@ const renderArticlePage = (database) => {
         return;
     }
 
-    const isQuestDetail = isQuestStyledArticle(article);
-    const questGuideBlock = isQuestDetail ? findQuestGuideBlock(article) : null;
-    const hasQuestHtmlBlock = isQuestDetail && (article.blocks || []).some((block) => block.type === 'html');
-    const preferSourceQuestHtml = hasQuestHtmlBlock && String(article.source?.path || '').startsWith('quests/');
-    const skillArticleParts = !isQuestDetail ? getSkillArticleParts(article) : null;
-    const isFlatArticle = article.layout === 'contacts-page';
+    const articleForRender = normalizeArticleBlocksForRender(article);
+    const isQuestDetail = isQuestStyledArticle(articleForRender);
+    const questGuideBlock = isQuestDetail ? findQuestGuideBlock(articleForRender) : null;
+    const hasQuestHtmlBlock = isQuestDetail && (articleForRender.blocks || []).some((block) => block.type === 'html');
+    const preferSourceQuestHtml = hasQuestHtmlBlock && String(articleForRender.source?.path || '').startsWith('quests/');
+    const skillArticleParts = !isQuestDetail ? getSkillArticleParts(articleForRender) : null;
+    const gradeArticleParts = !isQuestDetail ? getGradeArticleParts(articleForRender) : null;
+    const isFlatArticle = articleForRender.layout === 'contacts-page';
     const articleBlocksHtml = preferSourceQuestHtml
-        ? (article.blocks || [])
+        ? (articleForRender.blocks || [])
               .filter((block) => block.type !== 'questGuide')
               .map(renderBlock)
               .join('')
         : questGuideBlock
-          ? [questGuideBlock]
-                .concat((article.blocks || []).filter((block) => block.type !== 'questGuide' && block.type !== 'html'))
+          ? `${renderQuestGuideBlock(prepareQuestGuideBlockForRender(questGuideBlock, articleForRender))}${(articleForRender.blocks || [])
+                .filter((block) => block.type !== 'questGuide' && block.type !== 'html')
                 .map(renderBlock)
-                .join('')
+                .join('')}`
           : hasQuestHtmlBlock
-            ? (article.blocks || []).map(renderBlock).join('')
+            ? (articleForRender.blocks || []).map(renderBlock).join('')
             : isQuestDetail
-              ? renderQuestCompatContent(article)
+              ? renderQuestCompatContent(articleForRender)
               : skillArticleParts
                 ? `${skillArticleParts.before}${renderSkillProgression(skillArticleParts.skillTables)}${skillArticleParts.after}`
-                : (article.blocks || []).map(renderBlock).join('');
+                : gradeArticleParts
+                  ? `${gradeArticleParts.before}${renderGradeBrowser(gradeArticleParts.gradeTables, articleForRender.title)}${gradeArticleParts.after}`
+                : (articleForRender.blocks || []).map(renderBlock).join('');
     const relatedIds = isFlatArticle
         ? []
-        : Array.from(new Set([...(article.related || []), ...(questGuideBlock?.relatedQuestIds || [])])).filter(Boolean);
+        : Array.from(new Set([...(articleForRender.related || []), ...(questGuideBlock?.relatedQuestIds || [])])).filter(Boolean);
     const articleLayoutClass = isQuestDetail ? ' article-layout--quest' : isFlatArticle ? ' article-layout--flat' : '';
     const articleColumnsClass = isQuestDetail ? ' wiki-columns--article-quest' : isFlatArticle ? ' wiki-columns--article-single' : '';
-    const heroHtml = isFlatArticle ? renderFlatArticleHero(article, section) : renderArticleHero(article, section, isQuestDetail);
+    const heroHtml = isFlatArticle
+        ? renderFlatArticleHero(articleForRender, section)
+        : renderArticleHero(articleForRender, section, isQuestDetail);
     const asideHtml = isFlatArticle
         ? ''
         : `
             <aside class="wiki-stack wiki-stack--aside">
-                ${renderInfobox(article, section, group, isQuestDetail ? 'wiki-infobox--quest' : '')}
+                ${renderInfobox(articleForRender, section, group, isQuestDetail ? 'wiki-infobox--quest' : '')}
             </aside>
         `;
 
@@ -2004,7 +2318,8 @@ const renderArticlePage = (database) => {
         <div class="article-layout${articleLayoutClass}">
             ${renderBreadcrumbs([
                 { label: 'Главная', href: routes.home },
-                { label: section.title, href: buildSectionUrl(section.id, article.group) },
+                { label: section.title, href: buildSectionUrl(section.id) },
+                ...(group ? [{ label: group.label, href: buildGroupNavigationUrl(database, section, group) }] : []),
                 { label: article.title },
             ])}
             ${heroHtml}
@@ -2021,6 +2336,7 @@ const renderArticlePage = (database) => {
     bindQuestImageFallbacks(target);
     bindArchiveDetailTabs(target);
     bindClassTreeTabs(target);
+    bindGradeBrowsers(target);
 };
 
 const normalizeSearchText = (value = '') =>
@@ -2191,6 +2507,8 @@ const renderSidebar = (database) => {
 };
 
 const syncSidebarState = (sectionId, groupId = '') => {
+    const normalizedGroupId = getSectionAliasId(sectionId, groupId);
+
     document.querySelectorAll('.sidebar__item').forEach((item) => {
         item.classList.remove('sidebar__item--current', 'is-open');
         const link = item.querySelector('.sidebar__link');
@@ -2222,8 +2540,8 @@ const syncSidebarState = (sectionId, groupId = '') => {
         currentItem.classList.add('is-open');
     }
 
-    if (groupId) {
-        const activeGroupLink = currentItem.querySelector(`.sidebar__submenu-link[data-group="${groupId}"]`);
+    if (normalizedGroupId) {
+        const activeGroupLink = currentItem.querySelector(`.sidebar__submenu-link[data-group="${normalizedGroupId}"]`);
 
         if (activeGroupLink) {
             activeGroupLink.classList.add('is-active');
@@ -2344,6 +2662,18 @@ const setLinkHref = (selector, value) => {
     }
 };
 
+const toAbsoluteUrl = (value = '') => {
+    if (!value) {
+        return '';
+    }
+
+    try {
+        return new URL(value, window.location.origin).href;
+    } catch {
+        return '';
+    }
+};
+
 const updateSeoMetadata = (database) => {
     const sectionId = getParam('section');
     const articleId = getParam('article');
@@ -2354,16 +2684,23 @@ const updateSeoMetadata = (database) => {
     let title = siteName;
     let description = 'База знаний по Lineage II: гайды, локации, NPC, предметы и полезные маршруты.';
     let ogType = 'website';
+    let imageUrl = toAbsoluteUrl(database.site?.socialImage || '/assets/img/base/logo-like.png');
+
+    if (database.site?.seoDescription) {
+        description = database.site.seoDescription;
+    }
 
     if (articleId && database.articles[articleId]) {
         const article = database.articles[articleId];
         title = `${article.title} | ${siteName}`;
         description = article.summary || description;
         ogType = 'article';
+        imageUrl = toAbsoluteUrl(article.heroImage || database.site?.socialImage || '/assets/img/base/logo-like.png');
     } else if (sectionId && database.sections[sectionId]) {
         const section = database.sections[sectionId];
         title = `${section.title} | ${siteName}`;
         description = section.description || description;
+        imageUrl = toAbsoluteUrl((section.groups || []).find((group) => group?.iconSrc)?.iconSrc || database.site?.socialImage || '/assets/img/base/logo-like.png');
     } else if (query) {
         title = `Поиск: ${query} | ${siteName}`;
         description = `Результаты поиска по запросу "${query}" на ${siteName}.`;
@@ -2374,9 +2711,11 @@ const updateSeoMetadata = (database) => {
     setMetaContent('meta[property="og:description"]', description);
     setMetaContent('meta[property="og:url"]', canonicalUrl);
     setMetaContent('meta[property="og:type"]', ogType);
+    setMetaContent('meta[property="og:image"]', imageUrl);
     setMetaContent('meta[name="twitter:title"]', title);
     setMetaContent('meta[name="twitter:description"]', description);
     setMetaContent('meta[name="twitter:url"]', canonicalUrl);
+    setMetaContent('meta[name="twitter:image"]', imageUrl);
     setLinkHref('link[rel="canonical"]', canonicalUrl);
 };
 
@@ -2436,6 +2775,7 @@ const renderCurrentPage = () => {
         return;
     }
 
+    syncCanonicalRoute(database);
     resetPagedTableRegistry();
     renderSidebar(database);
     renderFooter(database);
@@ -2455,6 +2795,7 @@ const renderCurrentPage = () => {
 
     bindClassTreeTabs(document);
     bindSkillProgressTabs(document);
+    bindGradeBrowsers(document);
     bindPaginatedTables(document);
     updateDocumentTitle(database);
     updateSeoMetadata(database);

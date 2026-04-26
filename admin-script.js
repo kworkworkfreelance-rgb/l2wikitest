@@ -46,6 +46,7 @@
         articleGroup: document.getElementById('articleGroup'),
         articleEyebrow: document.getElementById('articleEyebrow'),
         articleLayout: document.getElementById('articleLayout'),
+        articleHeroImage: document.getElementById('articleHeroImage'),
         articleSummary: document.getElementById('articleSummary'),
         articleMeta: document.getElementById('articleMeta'),
         articleAliases: document.getElementById('articleAliases'),
@@ -84,6 +85,9 @@
         siteForm: document.getElementById('siteForm'),
         siteName: document.getElementById('siteName'),
         siteSubtitle: document.getElementById('siteSubtitle'),
+        siteSeoDescription: document.getElementById('siteSeoDescription'),
+        siteSocialImage: document.getElementById('siteSocialImage'),
+        siteSocialImageAlt: document.getElementById('siteSocialImageAlt'),
         siteAds: document.getElementById('siteAds'),
         securityForm: document.getElementById('securityForm'),
         securityUsername: document.getElementById('securityUsername'),
@@ -167,6 +171,32 @@
         const safeTotal = Math.max(1, Number(totalPages) || 1);
         const numericPage = Number(page) || 1;
         return Math.min(Math.max(1, numericPage), safeTotal);
+    };
+
+    const scrollIntoViewX = (container, item) => {
+        if (!container || !item || typeof item.scrollIntoView !== 'function') {
+            return;
+        }
+
+        item.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center',
+        });
+    };
+
+    const scrollAdminListToTop = (kind) => {
+        const target = kind === 'sections' ? elements.sectionList : elements.articleList;
+
+        if (!target || typeof target.scrollIntoView !== 'function') {
+            return;
+        }
+
+        target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+            inline: 'nearest',
+        });
     };
 
     const buildAdminPager = ({ kind, currentPage, totalPages, totalItems, pageSize }) => {
@@ -2019,6 +2049,16 @@
                 )
                 .join('')}
         `;
+
+        scrollIntoViewX(
+            elements.articleList.querySelector('.admin-pagination__pages'),
+            elements.articleList.querySelector('.admin-pagination__page.is-active')
+        );
+        elements.articleList.querySelector('.admin-item.is-selected')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest',
+        });
     };
 
     const renderSectionList = () => {
@@ -2072,6 +2112,16 @@
                 })
                 .join('')}
         `;
+
+        scrollIntoViewX(
+            elements.sectionList.querySelector('.admin-pagination__pages'),
+            elements.sectionList.querySelector('.admin-pagination__page.is-active')
+        );
+        elements.sectionList.querySelector('.admin-item.is-selected')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest',
+        });
     };
 
 
@@ -2140,6 +2190,9 @@
         fillContactsBuilder();
         elements.siteName.value = getDatabase().site?.name || '';
         elements.siteSubtitle.value = getDatabase().site?.subtitle || '';
+        elements.siteSeoDescription.value = getDatabase().site?.seoDescription || '';
+        elements.siteSocialImage.value = getDatabase().site?.socialImage || '';
+        elements.siteSocialImageAlt.value = getDatabase().site?.socialImageAlt || '';
         elements.siteAds.value = stringifyJson(getDatabase().site?.ads || {});
         renderAdsBuilder(parseJsonFieldSafe(elements.siteAds.value, {}));
         if (elements.securityUsername) {
@@ -2157,6 +2210,7 @@
         elements.articleId.value = '';
         elements.articleOrder.value = '9999';
         elements.articleLayout.value = '';
+        elements.articleHeroImage.value = '';
         elements.articleBlocks.value = '';
         elements.articleSidebarFacts.value = '';
         elements.articleAliases.value = '';
@@ -2195,6 +2249,7 @@
         populateGroupSelect(article.section, article.group);
         elements.articleEyebrow.value = article.eyebrow || '';
         elements.articleLayout.value = article.layout || '';
+        elements.articleHeroImage.value = article.heroImage || '';
         elements.articleSummary.value = article.summary || '';
         elements.articleMeta.value = serializeMeta(article.meta);
         elements.articleAliases.value = serializeLines(article.aliases);
@@ -2284,6 +2339,7 @@
             group: String(elements.articleGroup.value || '').trim(),
             eyebrow: String(elements.articleEyebrow.value || '').trim(),
             layout: String(elements.articleLayout.value || '').trim(),
+            heroImage: String(elements.articleHeroImage.value || '').trim(),
             summary: String(elements.articleSummary.value || '').trim(),
             meta: parseMeta(elements.articleMeta.value),
             aliases: parseLines(elements.articleAliases.value),
@@ -2410,6 +2466,9 @@
                 body: JSON.stringify({
                     name: String(elements.siteName.value || '').trim(),
                     subtitle: String(elements.siteSubtitle.value || '').trim(),
+                    seoDescription: String(elements.siteSeoDescription.value || '').trim(),
+                    socialImage: String(elements.siteSocialImage.value || '').trim(),
+                    socialImageAlt: String(elements.siteSocialImageAlt.value || '').trim(),
                     ads: adsValue ? parseJsonField(adsValue, 'Ads JSON') : {},
                 }),
             });
@@ -2811,6 +2870,7 @@
                 }
 
                 renderArticleList();
+                scrollAdminListToTop('articles');
                 return;
             }
 
@@ -2824,6 +2884,7 @@
                 }
 
                 renderSectionList();
+                scrollAdminListToTop('sections');
                 return;
             }
         }

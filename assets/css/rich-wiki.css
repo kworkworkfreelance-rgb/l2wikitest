@@ -153,9 +153,23 @@
 .wiki-rich-table__pager-actions,
 .wiki-rich-table__pager-pages {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
     align-items: center;
+}
+
+.wiki-rich-table__pager-actions {
+    width: 100%;
+    justify-content: space-between;
+}
+
+.wiki-rich-table__pager-pages {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    padding: 2px 2px 6px;
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
 }
 
 .wiki-rich-table__pager-button,
@@ -170,6 +184,11 @@
     font: inherit;
     cursor: pointer;
     transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.wiki-rich-table__pager-page {
+    flex: 0 0 auto;
+    scroll-snap-align: center;
 }
 
 .wiki-rich-table__pager-button:hover,
@@ -188,11 +207,32 @@
 .wiki-rich-table__pager-gap {
     color: #7a8ea4;
     padding: 0 2px;
+    flex: 0 0 auto;
 }
 
 .wiki-empty--loading {
     border-style: dashed;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 254, 0.94));
+}
+
+.section-switcher,
+.archive-detail__tabs,
+.skill-progress__tabs,
+.class-tree__tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+}
+
+.section-switcher__link,
+.archive-detail__tab-item,
+.archive-detail__tab-link,
+.skill-progress__tab,
+.class-tree__tab {
+    flex: 0 0 auto;
+    scroll-snap-align: center;
 }
 
 .wiki-item-thumb {
@@ -292,6 +332,54 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+}
+
+.grade-browser {
+    display: grid;
+    gap: 16px;
+}
+
+.grade-browser__tabs {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 2px 8px;
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+}
+
+.grade-browser__tab {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid rgba(44, 65, 89, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #28425d;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    scroll-snap-align: center;
+}
+
+.grade-browser__tab:hover,
+.grade-browser__tab.is-active {
+    border-color: rgba(11, 121, 207, 0.34);
+    background: rgba(11, 121, 207, 0.1);
+    color: #0b79cf;
+    transform: translateY(-1px);
+}
+
+.grade-browser__pane[hidden] {
+    display: none;
+}
+
+.grade-browser__title {
+    margin: 0 0 12px;
+    color: #1f3954;
+    font-size: 1.1rem;
+    font-weight: 700;
 }
 
 .skill-progress__tab {

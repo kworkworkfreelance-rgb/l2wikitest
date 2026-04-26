@@ -604,7 +604,7 @@ select {
     display: flex;
     align-items: center;
     gap: 10px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
 .admin-pagination {
@@ -626,6 +626,21 @@ select {
     font-size: 13px;
 }
 
+.admin-pagination__actions {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: flex-end;
+}
+
+.admin-pagination__pages {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+}
+
 .admin-pagination__page {
     min-width: 38px;
     min-height: 38px;
@@ -636,6 +651,8 @@ select {
     color: var(--admin-text);
     cursor: pointer;
     transition: 0.2s ease;
+    flex: 0 0 auto;
+    scroll-snap-align: center;
 }
 
 .admin-pagination__page:hover,
