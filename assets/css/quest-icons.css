@@ -156,3 +156,121 @@
     object-fit: cover;
     display: block;
 }
+
+/* ============================================================
+   NEW: Beautiful quest cards like linedia.ru
+   ============================================================ */
+
+/* Quest section styling */
+.quests-section {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 20px 0;
+}
+
+.quests-section__title {
+    color: #ffd700;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    text-align: center;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Quest card grid */
+.quests-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+/* Individual quest card */
+.quest-card {
+    background: linear-gradient(145deg, #2d2d44 0%, #1f1f35 100%);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 215, 0, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.quest-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.2);
+    border-color: rgba(255, 215, 0, 0.3);
+}
+
+/* Quest card image */
+.quest-card__image {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+/* Quest card content */
+.quest-card__content {
+    padding: 16px;
+}
+
+.quest-card__title {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    line-height: 1.3;
+}
+
+.quest-card__description {
+    color: #a0a0b0;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+
+/* Quest card meta (level, type) */
+.quest-card__meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.quest-card__badge {
+    background: rgba(255, 215, 0, 0.15);
+    color: #ffd700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.quest-card__badge--level {
+    background: rgba(100, 200, 255, 0.15);
+    color: #64c8ff;
+}
+
+/* Category headers */
+.quests-category {
+    margin-bottom: 32px;
+}
+
+.quests-category__title {
+    color: #64c8ff;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-left: 12px;
+    border-left: 3px solid #64c8ff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .quests-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quest-card__image {
+        height: 100px;
+    }
+}
