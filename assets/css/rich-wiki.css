@@ -593,6 +593,11 @@
     padding: 10px 10px 12px;
 }
 
+.sidebar__item.is-open .sidebar__submenu,
+.sidebar__item:focus-within .sidebar__submenu {
+    max-height: 720px;
+}
+
 .sidebar__submenu-link {
     display: flex;
     align-items: center;
@@ -666,6 +671,25 @@
 
 .sidebar__submenu-text {
     line-height: 1.2;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .sidebar__item--has-submenu:hover > .sidebar__link .arrow {
+        color: #0b79cf;
+        transform: rotate(90deg);
+    }
+
+    .sidebar__item--has-submenu:hover .sidebar__submenu {
+        max-height: 720px;
+        padding-bottom: 14px;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .sidebar__item--has-submenu:hover .sidebar__submenu-link {
+        opacity: 1;
+        transform: none;
+    }
 }
 
 [data-wiki-article][data-article-id='contacts'] .rich-block--table .wiki-rich-table {
@@ -1556,6 +1580,22 @@
     font-size: 0.95rem;
 }
 
+.page-hero__image--icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: clamp(200px, 28vw, 320px);
+    padding: clamp(22px, 3vw, 36px);
+    background: radial-gradient(circle at center, rgba(233, 241, 250, 0.95), rgba(245, 249, 253, 0.88));
+}
+
+.page-hero__image--icon img {
+    width: min(100%, 240px);
+    max-height: 240px;
+    object-fit: contain;
+    image-rendering: auto;
+}
+
 .quest-guide__section {
     display: grid;
     gap: 10px;
@@ -2064,6 +2104,12 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.knowledge-card__image--icon {
+    object-fit: contain;
+    padding: 18px;
+    background: radial-gradient(circle at center, rgba(233, 241, 250, 0.92), rgba(245, 249, 253, 0.84));
 }
 
 .footer-bottomline__actions {

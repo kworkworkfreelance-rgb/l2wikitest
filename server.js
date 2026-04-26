@@ -800,13 +800,43 @@ const getServerGroupLeadArticleId = (database, section, group) => {
     );
 };
 
-const createPublicDatabaseBase = (database) => ({
-    version: Number(database?.version) || 2,
-    updatedAt: database?.updatedAt || new Date().toISOString(),
-    site: deepClone(database?.site || {}),
-    sections: deepClone(database?.sections || {}),
-    articles: {},
+const HOME_FEATURED_ARTICLE_IDS = ['class-tree', 'catacombs-necropolis', 'mammon-services', 'spoiler-guide'];
+
+const createPublicGroupSummary = (database, section, group = {}) => ({
+    id: group.id || '',
+    label: group.label || '',
+    description: group.description || '',
+    order: Number.isFinite(Number(group.order)) ? Number(group.order) : 9999,
+    entries: [getServerGroupLeadArticleId(database, section, group)].filter(Boolean),
+    landingArticleId: group.landingArticleId || '',
+    iconSrc: group.iconSrc || '',
+    iconAlt: group.iconAlt || '',
 });
+
+const createPublicSectionSummary = (database, section = {}) => ({
+    id: section.id || '',
+    title: section.title || '',
+    description: section.description || '',
+    order: Number.isFinite(Number(section.order)) ? Number(section.order) : 9999,
+    groups: Array.isArray(section.groups) ? section.groups.map((group) => createPublicGroupSummary(database, section, group)) : [],
+});
+
+const createPublicDatabaseBase = (database, options = {}) => {
+    const fullSectionIds = new Set(Array.isArray(options.fullSectionIds) ? options.fullSectionIds.filter(Boolean) : []);
+    const sections = {};
+
+    Object.values(database?.sections || {}).forEach((section) => {
+        sections[section.id] = fullSectionIds.has(section.id) ? deepClone(section) : createPublicSectionSummary(database, section);
+    });
+
+    return {
+        version: Number(database?.version) || 2,
+        updatedAt: database?.updatedAt || new Date().toISOString(),
+        site: deepClone(database?.site || {}),
+        sections,
+        articles: {},
+    };
+};
 
 const addArticleToPublicDatabase = (target, database, articleId) => {
     if (!articleId || target.articles[articleId] || !getArticleById(database, articleId)) {
@@ -994,7 +1024,20 @@ const buildPageDataPayload = (database, query = {}) => {
     const requestedSectionId = String(query.section || '').trim();
     const requestedGroupId = String(query.group || '').trim();
     const requestedQuery = String(query.query || '').trim();
-    const partialDatabase = createPublicDatabaseBase(database);
+    const partialDatabase = createPublicDatabaseBase(database, {
+        fullSectionIds: requestedPage === 'section' && requestedSectionId ? [requestedSectionId] : [],
+    });
+
+    if (requestedPage === 'home') {
+        HOME_FEATURED_ARTICLE_IDS.forEach((articleId) => addArticleToPublicDatabase(partialDatabase, database, articleId));
+
+        return {
+            ok: true,
+            mode: 'home',
+            isPartial: true,
+            database: partialDatabase,
+        };
+    }
 
     if (requestedPage === 'article') {
         const article = getArticleById(database, requestedArticleId);
@@ -1021,6 +1064,10 @@ const buildPageDataPayload = (database, query = {}) => {
         const section = getSectionById(database, sectionId);
         const normalizedGroupId = section ? normalizeServerGroupId(section, requestedGroupId) : requestedGroupId;
         const activeGroup = section ? resolveServerGroup(section, requestedGroupId) : null;
+
+        if (section) {
+            partialDatabase.sections[sectionId] = deepClone(section);
+        }
 
         if (section && activeGroup) {
             (activeGroup.entries || []).forEach((articleId) => addArticleToPublicDatabase(partialDatabase, database, articleId));

@@ -17,6 +17,29 @@ const FEATURED_ARTICLES = [
     { id: 'spoiler-guide', title: 'ГАЙД СПОЙЛЕРУ', text: 'Маршруты, добыча ресурсов и полезные связки для фарма.' },
 ];
 
+const QUEST_HERO_IMAGE_OVERRIDES = {
+    'antharas-entry': '/assets/img/quest-heroes/quest-guide-hero-antharas-entry.png',
+    'baium-entry': '/assets/img/quest-heroes/quest-guide-hero-baium-entry.png',
+    'freya-entry': '/assets/img/quest-heroes/quest-guide-hero-freya-entry.png',
+    'frintezza-entry': '/assets/img/quest-heroes/quest-guide-hero-frintezza-entry.png',
+    'noblesse-quest': '/assets/img/quest-heroes/quest-guide-hero-noblesse-quest.png',
+    'pagan-temple-pass': '/assets/img/quest-heroes/quest-guide-hero-pagan-temple-pass.png',
+    'pailaka-devils-legacy': '/assets/img/quest-heroes/quest-guide-hero-pailaka-devils-legacy.png',
+    'pailaka-injured-dragon': '/assets/img/quest-heroes/quest-guide-hero-pailaka-injured-dragon.png',
+    'pailaka-song-fire': '/assets/img/quest-heroes/quest-guide-hero-pailaka-song-fire.png',
+    'quest-baby-buffalo': '/assets/img/quest-heroes/quest-guide-hero-quest-baby-buffalo.png',
+    'quest-baby-cougar': '/assets/img/quest-heroes/quest-guide-hero-quest-baby-cougar.png',
+    'quest-baby-kookabura': '/assets/img/quest-heroes/quest-guide-hero-quest-baby-kookabura.png',
+    'quest-dragon-bugle': '/assets/img/quest-heroes/quest-guide-hero-quest-dragon-bugle.png',
+    'quest-dragonflute': '/assets/img/quest-heroes/quest-guide-hero-quest-dragonflute.png',
+    'quest-wolf-collar': '/assets/img/quest-heroes/quest-guide-hero-quest-wolf-collar.png',
+    'subclass-quest': '/assets/img/quest-heroes/quest-guide-hero-subclass-quest.png',
+    'transformation-quest': '/assets/img/quest-heroes/quest-guide-hero-transformation-quest.png',
+    'valakas-entry': '/assets/img/quest-heroes/quest-guide-hero-valakas-entry.png',
+    'wash-pk': '/assets/img/quest-heroes/quest-guide-hero-wash-pk.png',
+    'wedding-quest': '/assets/img/quest-heroes/quest-guide-hero-wedding-quest.png',
+};
+
 const LEGACY_GROUP_ALIASES = {
     quests: {
         epic: 'epic-bosses',
@@ -36,6 +59,13 @@ const escapeHtml = (value = '') =>
 
 const stripHtml = (value = '') => String(value).replace(/<[^>]+>/g, ' ');
 const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const isIconLikeImage = (src = '') =>
+    /(?:\/assets\/img\/icons\/|\/[1-4](?:st|nd|rd)?_prof\.png$|\/4_prof\.png$|map\.jpg$)/i.test(String(src).trim());
+const getPreferredArticleHeroImage = (articleOrId, fallbackImage = '') => {
+    const articleId = typeof articleOrId === 'string' ? articleOrId : articleOrId?.id || '';
+    const articleHeroImage = typeof articleOrId === 'string' ? '' : String(articleOrId?.heroImage || '').trim();
+    return QUEST_HERO_IMAGE_OVERRIDES[articleId] || articleHeroImage || String(fallbackImage || '').trim();
+};
 
 const getParam = (key) => new URLSearchParams(window.location.search).get(key);
 const getSectionAliasId = (sectionOrId, groupId = '') => {
@@ -236,6 +266,7 @@ const getProfessionRoman = (sectionId, groupId) => {
         'profession-2': 'II',
         'profession-3': 'III',
         'profession-4': 'IV',
+        'alternative-profession': 'IV',
     };
 
     return map[groupId] || '';
@@ -251,6 +282,7 @@ const getProfessionRomanTone = (sectionId, groupId) => {
         'profession-2': 'ii',
         'profession-3': 'iii',
         'profession-4': 'iv',
+        'alternative-profession': 'iv',
     };
 
     return map[groupId] || '';
@@ -511,9 +543,11 @@ const renderKnowledgeCardMedia = (imageSrc, altText) => {
         return '';
     }
 
+    const iconLikeClass = isIconLikeImage(imageSrc) ? ' knowledge-card__image--icon' : '';
+
     return `
         <div class="knowledge-card__media">
-            <img class="knowledge-card__image" src="${escapeHtml(imageSrc)}" alt="${escapeHtml(altText || 'Lineage II')}" loading="lazy" />
+            <img class="knowledge-card__image${iconLikeClass}" src="${escapeHtml(imageSrc)}" alt="${escapeHtml(altText || 'Lineage II')}" loading="lazy" />
         </div>
     `;
 };
@@ -527,7 +561,7 @@ const renderArticlePreview = (database, articleId) => {
 
     return `
         <article class="knowledge-card">
-            ${renderKnowledgeCardMedia(article.heroImage, article.title)}
+            ${renderKnowledgeCardMedia(getPreferredArticleHeroImage(article), article.title)}
             <div class="knowledge-card__head">
                 <span class="knowledge-card__eyebrow">${escapeHtml(article.eyebrow || 'Материал')}</span>
                 <h3 class="knowledge-card__title">
@@ -1165,13 +1199,36 @@ const normalizeQuestGuideEntriesForRender = (entries = [], repeatedIconSrc = '')
         substeps: entry?.substeps?.length ? normalizeQuestGuideEntriesForRender(entry.substeps, repeatedIconSrc) : [],
     }));
 
+const buildRelatedHeroMedia = (article = null, limit = 4) => {
+    const database = readDatabase();
+    const used = new Set([getPreferredArticleHeroImage(article)].filter(Boolean));
+
+    return (Array.isArray(article?.related) ? article.related : [])
+        .map((articleId) => getArticle(database, articleId))
+        .filter(Boolean)
+        .map((relatedArticle) => ({
+            src: getPreferredArticleHeroImage(relatedArticle),
+            alt: relatedArticle.title || 'Lineage II',
+            caption: relatedArticle.title || relatedArticle.summary || '',
+        }))
+        .filter((item) => {
+            if (!item.src || used.has(item.src)) {
+                return false;
+            }
+
+            used.add(item.src);
+            return true;
+        })
+        .slice(0, limit);
+};
+
 const prepareQuestGuideBlockForRender = (block, article = null) => {
     if (!block) {
         return null;
     }
 
     const repeatedIconSrc = getDominantQuestIcon(block);
-    const articleHeroImage = String(article?.heroImage || '').trim();
+    const articleHeroImage = getPreferredArticleHeroImage(article);
     const seenHeroMedia = new Set();
     const heroMedia = (Array.isArray(block.heroMedia) ? block.heroMedia : []).filter((item) => {
         const src = String(item?.src || '').trim();
@@ -1183,6 +1240,10 @@ const prepareQuestGuideBlockForRender = (block, article = null) => {
         seenHeroMedia.add(src);
         return true;
     });
+
+    if (!heroMedia.length) {
+        heroMedia.push(...buildRelatedHeroMedia(article));
+    }
 
     return {
         ...block,
@@ -1298,7 +1359,7 @@ const renderQuestGuideBlock = (block) => {
                 ${heroMedia
                     .map(
                         (item) => `
-                            <figure class="quest-guide__hero-card">
+                            <figure class="quest-guide__hero-card${isIconLikeImage(item.src) ? ' quest-guide__hero-card--icon' : ''}">
                                 <img src="${item.src}" alt="${escapeHtml(item.alt || item.caption || 'Lineage II')}" loading="lazy" />
                                 ${item.caption ? `<figcaption>${escapeHtml(item.caption)}</figcaption>` : ''}
                             </figure>
@@ -1928,10 +1989,11 @@ const renderInfobox = (article, section, group, className = '') => {
 };
 
 const renderArticleHero = (article, section, isQuestDetail = false) => {
-    const heroImage = article.heroImage;
+    const heroImage = getPreferredArticleHeroImage(article);
+    const iconLikeHero = isIconLikeImage(heroImage);
     const heroImageHtml = heroImage
         ? `
-        <div class="page-hero__image">
+        <div class="page-hero__image${iconLikeHero ? ' page-hero__image--icon' : ''}">
             <img src="${escapeHtml(heroImage)}" alt="${escapeHtml(article.title)}" loading="lazy" />
         </div>
     `
@@ -2419,7 +2481,10 @@ const renderSearchResults = (database) => {
                                 .map(
                                     (item) => `
                                         <article class="knowledge-card">
-                                            ${renderKnowledgeCardMedia(item.previewImage, item.title)}
+                                            ${renderKnowledgeCardMedia(
+                                                item.type === 'article' ? getPreferredArticleHeroImage(getArticle(database, item.id), item.previewImage) : item.previewImage,
+                                                item.title
+                                            )}
                                             <div class="knowledge-card__head">
                                                 <span class="knowledge-card__eyebrow">${escapeHtml(item.type === 'section' ? 'Раздел' : 'Материал')}</span>
                                                 <h2 class="knowledge-card__title">
@@ -2695,7 +2760,7 @@ const updateSeoMetadata = (database) => {
         title = `${article.title} | ${siteName}`;
         description = article.summary || description;
         ogType = 'article';
-        imageUrl = toAbsoluteUrl(article.heroImage || database.site?.socialImage || '/assets/img/base/logo-like.png');
+        imageUrl = toAbsoluteUrl(getPreferredArticleHeroImage(article, database.site?.socialImage || '/assets/img/base/logo-like.png'));
     } else if (sectionId && database.sections[sectionId]) {
         const section = database.sections[sectionId];
         title = `${section.title} | ${siteName}`;

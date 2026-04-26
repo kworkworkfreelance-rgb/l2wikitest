@@ -38,7 +38,7 @@
     };
 
     var buildPageDataUrl = function () {
-        if (currentPage !== 'article' && currentPage !== 'section' && currentPage !== 'search') {
+        if (currentPage !== 'home' && currentPage !== 'article' && currentPage !== 'section' && currentPage !== 'search') {
             return '';
         }
 
