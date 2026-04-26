@@ -2687,6 +2687,52 @@ const ensureContactsButtons = () => {
     });
 };
 
+const bindRoutePrefetch = () => {
+    if (document.body?.dataset?.routePrefetchBound === 'true' || typeof window.L2WIKI_PREFETCH_PAGE_DATA !== 'function') {
+        return;
+    }
+
+    const maybePrefetch = (target) => {
+        const link = target?.closest?.('a[href]');
+
+        if (!link) {
+            return;
+        }
+
+        const href = link.getAttribute('href') || '';
+
+        if (!href || href.startsWith('#') || /^(mailto:|tel:|javascript:)/i.test(href)) {
+            return;
+        }
+
+        window.L2WIKI_PREFETCH_PAGE_DATA(href);
+    };
+
+    document.addEventListener(
+        'mouseenter',
+        (event) => {
+            maybePrefetch(event.target);
+        },
+        true
+    );
+    document.addEventListener(
+        'focusin',
+        (event) => {
+            maybePrefetch(event.target);
+        },
+        true
+    );
+    document.addEventListener(
+        'touchstart',
+        (event) => {
+            maybePrefetch(event.target);
+        },
+        { passive: true, capture: true }
+    );
+
+    document.body.dataset.routePrefetchBound = 'true';
+};
+
 const updateDocumentTitle = (database) => {
     const sectionId = getParam('section');
     const articleId = getParam('article');
@@ -2834,6 +2880,7 @@ const renderCurrentPage = () => {
 
     ensureContactsButtons();
     wireSearchForms();
+    bindRoutePrefetch();
 
     if (isDataPending(database)) {
         renderLoadingState();

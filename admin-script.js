@@ -15,6 +15,7 @@
         articlePage: 1,
         sectionPage: 1,
         database: store.getDatabase(),
+        articleSummaryIds: new Set(),
         backups: [],
         adminUsername: window.L2WikiAdminSession?.username || 'admin',
         adminPasswordManagedByEnv: Boolean(window.L2WikiAdminSession?.passwordManagedByEnv),
@@ -1719,6 +1720,7 @@
     const cloneDatabase = () => store.normalizeDatabase(JSON.parse(JSON.stringify(getDatabase() || {})));
     const getSections = () => Object.values(getDatabase().sections || {}).sort(sortByOrder);
     const getArticles = () => Object.values(getDatabase().articles || {}).sort(sortByOrder);
+    const isArticleSummaryOnly = (articleId) => state.articleSummaryIds.has(articleId);
     const getSectionTitle = (sectionId) => getDatabase().sections?.[sectionId]?.title || sectionId || 'Без раздела';
     const getGroupLabel = (sectionId, groupId) =>
         getDatabase().sections?.[sectionId]?.groups?.find((group) => group.id === groupId)?.label || groupId || 'Без группы';
@@ -1752,7 +1754,27 @@
         syncStoreSnapshot(state.database);
     };
 
-    const fetchCanonicalSnapshot = async () => api('/data/canonical/l2wiki-canonical.json');
+    const applyBootstrapPayload = (payload) => {
+        state.articleSummaryIds = new Set(Array.isArray(payload?.articleSummaryIds) ? payload.articleSummaryIds : []);
+        applyDatabase(payload?.database || {});
+    };
+
+    const fetchAdminBootstrap = async () => api('/api/admin/bootstrap');
+
+    const ensureArticleLoaded = async (articleId) => {
+        const normalizedId = String(articleId || '').trim();
+
+        if (!normalizedId || !isArticleSummaryOnly(normalizedId)) {
+            return getDatabase().articles?.[normalizedId] || null;
+        }
+
+        const article = await api(`/api/article/${encodeURIComponent(normalizedId)}`);
+        const nextDatabase = cloneDatabase();
+        nextDatabase.articles[normalizedId] = article;
+        state.articleSummaryIds.delete(normalizedId);
+        applyDatabase(nextDatabase);
+        return nextDatabase.articles?.[normalizedId] || article;
+    };
 
     const syncSecurityFormState = () => {
         const passwordManagedByEnv = Boolean(window.L2WikiAdminSession?.passwordManagedByEnv || state.adminPasswordManagedByEnv);
@@ -2232,8 +2254,8 @@
         renderArticleList();
     };
 
-    const fillArticleForm = (articleId) => {
-        const article = getDatabase().articles?.[articleId];
+    const fillArticleForm = async (articleId) => {
+        const article = await ensureArticleLoaded(articleId);
 
         if (!article) {
             return;
@@ -2402,16 +2424,16 @@
         if (options.database) {
             applyDatabase(options.database);
         } else if (options.forceServerExport) {
-            applyDatabase(await fetchCanonicalSnapshot());
+            applyBootstrapPayload(await fetchAdminBootstrap());
         } else if (!Object.keys(getDatabase().articles || {}).length) {
-            applyDatabase(await fetchCanonicalSnapshot());
+            applyBootstrapPayload(await fetchAdminBootstrap());
         }
 
         await refreshBackups();
         renderAll();
 
         if (options.articleId && state.database.articles[options.articleId]) {
-            fillArticleForm(options.articleId);
+            await fillArticleForm(options.articleId);
         }
 
         if (options.sectionId && state.database.sections[options.sectionId]) {
@@ -2430,6 +2452,7 @@
             });
             const nextDatabase = cloneDatabase();
             nextDatabase.articles[savedArticle.id] = savedArticle;
+            state.articleSummaryIds.delete(savedArticle.id);
             await refreshDatabase({ articleId: savedArticle.id, database: nextDatabase });
             showToast(`Статья "${article.title}" сохранена.`);
         } catch (error) {
@@ -2492,6 +2515,7 @@
             });
             const nextDatabase = cloneDatabase();
             nextDatabase.articles[savedArticle.id] = savedArticle;
+            state.articleSummaryIds.delete(savedArticle.id);
             await refreshDatabase({ articleId: savedArticle.id, database: nextDatabase });
             showToast('Страница контактов сохранена.');
         } catch (error) {
@@ -2631,6 +2655,7 @@
 
             const nextDatabase = cloneDatabase();
             delete nextDatabase.articles[articleId];
+            state.articleSummaryIds.delete(articleId);
             await refreshDatabase({ database: nextDatabase });
             showToast(`Статья "${article.title}" удалена.`);
         } catch (error) {
@@ -2892,7 +2917,10 @@
         const editArticleButton = event.target.closest('[data-edit-article]');
 
         if (editArticleButton) {
-            fillArticleForm(editArticleButton.dataset.editArticle);
+            fillArticleForm(editArticleButton.dataset.editArticle).catch((error) => {
+                console.error('[Admin]', error);
+                showToast(error.message || 'Не удалось загрузить статью.', 'error');
+            });
         }
 
         const deleteArticleButton = event.target.closest('[data-delete-article]');

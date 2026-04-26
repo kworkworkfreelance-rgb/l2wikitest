@@ -85,12 +85,26 @@ const MUTABLE_ASSETS_DIR = path.join(STORAGE_DIR, 'assets', 'js');
 const MUTABLE_DATA_DIR = path.join(STORAGE_DIR, 'data');
 const BACKUP_DIR = path.join(MUTABLE_DATA_DIR, 'backups');
 const CANONICAL_DIR = path.join(MUTABLE_DATA_DIR, 'canonical');
+const PAGE_DATA_DIR = path.join(MUTABLE_DATA_DIR, 'page-data');
+const PAGE_DATA_ARTICLES_DIR = path.join(PAGE_DATA_DIR, 'articles');
+const PAGE_DATA_SECTIONS_DIR = path.join(PAGE_DATA_DIR, 'sections');
+const PAGE_DATA_BASE_PATH = path.join(PAGE_DATA_DIR, 'public-base.json');
+const PAGE_DATA_ARTICLE_SUMMARIES_PATH = path.join(PAGE_DATA_DIR, 'article-summaries.json');
+const PAGE_DATA_SEARCH_INDEX_PATH = path.join(PAGE_DATA_DIR, 'search-index.json');
+const ADMIN_BOOTSTRAP_PATH = path.join(MUTABLE_DATA_DIR, 'admin-bootstrap.json');
 const STATIC_DATA_PATH = path.join(MUTABLE_ASSETS_DIR, 'static-data.js');
 const APP_STATIC_DATA_PATH = path.join(ROOT_DIR, 'assets', 'js', 'static-data.js');
 const STORAGE_CANONICAL_PATH = path.join(CANONICAL_DIR, 'l2wiki-canonical.json');
 const STORAGE_CANONICAL_META_PATH = path.join(CANONICAL_DIR, 'l2wiki-meta.json');
 const APP_CANONICAL_PATH = path.join(ROOT_DIR, 'data', 'canonical', 'l2wiki-canonical.json');
 const APP_CANONICAL_META_PATH = path.join(ROOT_DIR, 'data', 'canonical', 'l2wiki-meta.json');
+const APP_PAGE_DATA_DIR = path.join(ROOT_DIR, 'data', 'page-data');
+const APP_PAGE_DATA_ARTICLES_DIR = path.join(APP_PAGE_DATA_DIR, 'articles');
+const APP_PAGE_DATA_SECTIONS_DIR = path.join(APP_PAGE_DATA_DIR, 'sections');
+const APP_PAGE_DATA_BASE_PATH = path.join(APP_PAGE_DATA_DIR, 'public-base.json');
+const APP_PAGE_DATA_ARTICLE_SUMMARIES_PATH = path.join(APP_PAGE_DATA_DIR, 'article-summaries.json');
+const APP_PAGE_DATA_SEARCH_INDEX_PATH = path.join(APP_PAGE_DATA_DIR, 'search-index.json');
+const APP_ADMIN_BOOTSTRAP_PATH = path.join(ROOT_DIR, 'data', 'admin-bootstrap.json');
 const LEGACY_JSON_PATH = path.join(ROOT_DIR, 'l2wiki-db-2026-04-07.json');
 const DB_PATH = path.join(STORAGE_DIR, 'l2wiki.db');
 
@@ -127,8 +141,19 @@ const ensureDir = (targetPath) => {
     }
 };
 
+const copyDirIfExists = (sourceDir, targetDir) => {
+    if (!fs.existsSync(sourceDir)) {
+        return;
+    }
+
+    ensureDir(path.dirname(targetDir));
+    fs.cpSync(sourceDir, targetDir, { recursive: true, force: true });
+};
+
 const ensureMutableStorage = () => {
-    [STORAGE_DIR, MUTABLE_ASSETS_DIR, MUTABLE_DATA_DIR, BACKUP_DIR, CANONICAL_DIR].forEach(ensureDir);
+    [STORAGE_DIR, MUTABLE_ASSETS_DIR, MUTABLE_DATA_DIR, BACKUP_DIR, CANONICAL_DIR, PAGE_DATA_DIR, PAGE_DATA_ARTICLES_DIR, PAGE_DATA_SECTIONS_DIR].forEach(
+        ensureDir
+    );
 
     if (STATIC_PUBLISH_ENABLED && STATIC_DATA_PATH !== APP_STATIC_DATA_PATH && !fs.existsSync(STATIC_DATA_PATH) && fs.existsSync(APP_STATIC_DATA_PATH)) {
         fs.copyFileSync(APP_STATIC_DATA_PATH, STATIC_DATA_PATH);
@@ -429,6 +454,13 @@ const syncAppCanonicalToStorageIfNewer = () => {
         writeFileAtomic(STORAGE_CANONICAL_META_PATH, JSON.stringify(buildMeta(loadJsonCandidate(APP_CANONICAL_PATH, 'app canonical copy')?.data || createEmptyDatabase())));
     }
 
+    fs.rmSync(PAGE_DATA_DIR, { recursive: true, force: true });
+    copyDirIfExists(APP_PAGE_DATA_DIR, PAGE_DATA_DIR);
+
+    if (fs.existsSync(APP_ADMIN_BOOTSTRAP_PATH)) {
+        fs.copyFileSync(APP_ADMIN_BOOTSTRAP_PATH, ADMIN_BOOTSTRAP_PATH);
+    }
+
     if (STATIC_PUBLISH_ENABLED && fs.existsSync(APP_STATIC_DATA_PATH)) {
         ensureDir(path.dirname(STATIC_DATA_PATH));
         fs.copyFileSync(APP_STATIC_DATA_PATH, STATIC_DATA_PATH);
@@ -596,6 +628,7 @@ const publishDatabase = async (database, reason = 'publish') => {
 
     await writeCanonicalJsonFile(normalized);
     writeCanonicalMetaFile(normalized);
+    writeRuntimeArtifacts(normalized);
 
     if (STATIC_PUBLISH_ENABLED) {
         const serializedDatabase = fs.readFileSync(STORAGE_CANONICAL_PATH, 'utf8');
@@ -608,6 +641,7 @@ const publishDatabase = async (database, reason = 'publish') => {
 
     app.locals.database = null;
     app.locals.databaseMeta = buildMeta(normalized);
+    invalidateArtifactCache();
     enqueueSqliteSync(normalized, reason);
 
     return normalized;
@@ -725,6 +759,114 @@ const sendCanonicalDatabase = (res) => {
 
     sendMutableFile(res, canonicalPath, 'application/json; charset=utf-8');
     return true;
+};
+
+const readJsonFileIfExists = (filePath) => {
+    if (!filePath || !fs.existsSync(filePath)) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (error) {
+        console.warn(`[artifacts] Failed to parse ${filePath}: ${error.message}`);
+        return null;
+    }
+};
+
+const getArtifactCache = () => {
+    if (!app.locals.artifactCache) {
+        app.locals.artifactCache = {
+            publicBase: null,
+            articleSummaries: null,
+            searchIndex: null,
+            adminBootstrap: null,
+            sections: new Map(),
+        };
+    }
+
+    return app.locals.artifactCache;
+};
+
+const invalidateArtifactCache = () => {
+    app.locals.artifactCache = {
+        publicBase: null,
+        articleSummaries: null,
+        searchIndex: null,
+        adminBootstrap: null,
+        sections: new Map(),
+    };
+};
+
+const loadPublicBaseArtifact = () => {
+    const cache = getArtifactCache();
+
+    if (!cache.publicBase) {
+        cache.publicBase = readJsonFileIfExists(PAGE_DATA_BASE_PATH) || readJsonFileIfExists(APP_PAGE_DATA_BASE_PATH);
+    }
+
+    return cache.publicBase;
+};
+
+const loadArticleSummariesArtifact = () => {
+    const cache = getArtifactCache();
+
+    if (!cache.articleSummaries) {
+        cache.articleSummaries = readJsonFileIfExists(PAGE_DATA_ARTICLE_SUMMARIES_PATH) || readJsonFileIfExists(APP_PAGE_DATA_ARTICLE_SUMMARIES_PATH);
+    }
+
+    return cache.articleSummaries;
+};
+
+const loadSearchIndexArtifact = () => {
+    const cache = getArtifactCache();
+
+    if (!cache.searchIndex) {
+        cache.searchIndex = readJsonFileIfExists(PAGE_DATA_SEARCH_INDEX_PATH) || readJsonFileIfExists(APP_PAGE_DATA_SEARCH_INDEX_PATH);
+    }
+
+    return cache.searchIndex;
+};
+
+const loadAdminBootstrapArtifact = () => {
+    const cache = getArtifactCache();
+
+    if (!cache.adminBootstrap) {
+        cache.adminBootstrap = readJsonFileIfExists(ADMIN_BOOTSTRAP_PATH) || readJsonFileIfExists(APP_ADMIN_BOOTSTRAP_PATH);
+    }
+
+    return cache.adminBootstrap;
+};
+
+const loadSectionArtifact = (sectionId) => {
+    const normalizedId = String(sectionId || '').trim();
+
+    if (!normalizedId) {
+        return null;
+    }
+
+    const cache = getArtifactCache();
+
+    if (!cache.sections.has(normalizedId)) {
+        const sectionPath = path.join(PAGE_DATA_SECTIONS_DIR, `${normalizedId}.json`);
+        const appSectionPath = path.join(APP_PAGE_DATA_SECTIONS_DIR, `${normalizedId}.json`);
+        cache.sections.set(normalizedId, readJsonFileIfExists(sectionPath) || readJsonFileIfExists(appSectionPath) || null);
+    }
+
+    return cache.sections.get(normalizedId) || null;
+};
+
+const loadArticleArtifact = (articleId) => {
+    const normalizedId = String(articleId || '').trim();
+
+    if (!normalizedId) {
+        return null;
+    }
+
+    return (
+        readJsonFileIfExists(path.join(PAGE_DATA_ARTICLES_DIR, `${normalizedId}.json`)) ||
+        readJsonFileIfExists(path.join(APP_PAGE_DATA_ARTICLES_DIR, `${normalizedId}.json`))
+    );
 };
 
 const normalizeSearchText = (value = '') =>
@@ -968,7 +1110,144 @@ const buildSectionSearchRecord = (section) => ({
         .join(' '),
 });
 
-const searchPublicDatabase = (database, query, options = {}) => {
+const buildPublicArticleSummary = (article = {}) => ({
+    id: article.id || '',
+    section: article.section || '',
+    group: article.group || '',
+    title: article.title || '',
+    summary: article.summary || '',
+    eyebrow: article.eyebrow || '',
+    order: Number.isFinite(Number(article.order)) ? Number(article.order) : 9999,
+    layout: article.layout || '',
+    heroImage: article.heroImage || '',
+    meta: deepClone(article.meta || []),
+    sidebarFacts: deepClone(article.sidebarFacts || []),
+    aliases: deepClone(article.aliases || []),
+    related: deepClone(article.related || []),
+    source: deepClone(article.source || {}),
+});
+
+const buildSearchIndex = (database) => [
+    ...Object.values(database?.sections || {}).map(buildSectionSearchRecord),
+    ...Object.values(database?.articles || {}).map((article) => buildArticleSearchRecord(database, article)),
+];
+
+const buildAdminBootstrapPayload = (database) => {
+    const articles = {};
+    const articleSummaryIds = [];
+
+    Object.values(database?.articles || {})
+        .sort(sortByOrder)
+        .forEach((article) => {
+            if (!article?.id) {
+                return;
+            }
+
+            if (article.id === 'contacts') {
+                articles[article.id] = deepClone(article);
+                return;
+            }
+
+            articles[article.id] = buildPublicArticleSummary(article);
+            articleSummaryIds.push(article.id);
+        });
+
+    return {
+        ok: true,
+        updatedAt: database?.updatedAt || new Date().toISOString(),
+        articleSummaryIds,
+        database: {
+            version: Number(database?.version) || 2,
+            updatedAt: database?.updatedAt || new Date().toISOString(),
+            site: deepClone(database?.site || {}),
+            sections: deepClone(database?.sections || {}),
+            articles,
+        },
+    };
+};
+
+const writeSharedRuntimeArtifacts = (database) => {
+    const normalized = database && typeof database === 'object' ? database : createEmptyDatabase();
+    const publicBase = createPublicDatabaseBase(normalized);
+    const articleSummaries = Object.fromEntries(
+        Object.values(normalized.articles || {}).map((article) => [article.id, buildPublicArticleSummary(article)])
+    );
+    const searchIndex = buildSearchIndex(normalized);
+    const adminBootstrap = buildAdminBootstrapPayload(normalized);
+
+    writeFileAtomic(PAGE_DATA_BASE_PATH, JSON.stringify(publicBase));
+    writeFileAtomic(PAGE_DATA_ARTICLE_SUMMARIES_PATH, JSON.stringify(articleSummaries));
+    writeFileAtomic(PAGE_DATA_SEARCH_INDEX_PATH, JSON.stringify(searchIndex));
+    writeFileAtomic(ADMIN_BOOTSTRAP_PATH, JSON.stringify(adminBootstrap));
+};
+
+const writeSectionArtifacts = (database, sectionIds = null) => {
+    const normalized = database && typeof database === 'object' ? database : createEmptyDatabase();
+    const targetIds = Array.isArray(sectionIds) ? Array.from(new Set(sectionIds.filter(Boolean))) : Object.keys(normalized.sections || {});
+
+    ensureDir(PAGE_DATA_SECTIONS_DIR);
+
+    for (const sectionId of targetIds) {
+        const sectionPath = path.join(PAGE_DATA_SECTIONS_DIR, `${sectionId}.json`);
+        const section = normalized.sections?.[sectionId];
+
+        if (!section) {
+            fs.rmSync(sectionPath, { force: true });
+            continue;
+        }
+
+        writeFileAtomic(sectionPath, JSON.stringify(section));
+    }
+};
+
+const writeArticleArtifacts = (database, articleIds = null) => {
+    const normalized = database && typeof database === 'object' ? database : createEmptyDatabase();
+    const targetIds = Array.isArray(articleIds) ? Array.from(new Set(articleIds.filter(Boolean))) : Object.keys(normalized.articles || {});
+
+    ensureDir(PAGE_DATA_ARTICLES_DIR);
+
+    for (const articleId of targetIds) {
+        const articlePath = path.join(PAGE_DATA_ARTICLES_DIR, `${articleId}.json`);
+        const article = normalized.articles?.[articleId];
+
+        if (!article) {
+            fs.rmSync(articlePath, { force: true });
+            continue;
+        }
+
+        writeFileAtomic(articlePath, JSON.stringify(article));
+    }
+};
+
+const writeRuntimeArtifacts = (database, reason = 'publish') => {
+    const normalized = database && typeof database === 'object' ? database : createEmptyDatabase();
+    writeSharedRuntimeArtifacts(normalized);
+
+    if (/^(import|reset)$/.test(String(reason || '')) || !/^(article-|delete-article-|section-|delete-section-|site-settings$)/.test(String(reason || ''))) {
+        fs.rmSync(PAGE_DATA_ARTICLES_DIR, { recursive: true, force: true });
+        fs.rmSync(PAGE_DATA_SECTIONS_DIR, { recursive: true, force: true });
+        writeSectionArtifacts(normalized);
+        writeArticleArtifacts(normalized);
+        return;
+    }
+
+    if (/^site-settings$/.test(reason)) {
+        return;
+    }
+
+    if (/^(section-|delete-section-)/.test(reason)) {
+        writeSectionArtifacts(normalized);
+        return;
+    }
+
+    if (/^(article-|delete-article-)/.test(reason)) {
+        const articleId = String(reason).replace(/^(article-|delete-article-)/, '');
+        writeSectionArtifacts(normalized);
+        writeArticleArtifacts(normalized, [articleId]);
+    }
+};
+
+const searchRecords = (source, query, options = {}) => {
     const normalized = normalizeSearchText(query);
 
     if (!normalized) {
@@ -977,10 +1256,6 @@ const searchPublicDatabase = (database, query, options = {}) => {
 
     const tokens = normalized.split(/\s+/).filter(Boolean);
     const limit = Number.isFinite(Number(options.limit)) ? Number(options.limit) : 24;
-    const source = [
-        ...Object.values(database?.sections || {}).map(buildSectionSearchRecord),
-        ...Object.values(database?.articles || {}).map((article) => buildArticleSearchRecord(database, article)),
-    ];
 
     return source
         .map((item) => {
@@ -1016,6 +1291,112 @@ const searchPublicDatabase = (database, query, options = {}) => {
         .sort((left, right) => right.score - left.score)
         .slice(0, limit)
         .map(({ score, searchableText, ...item }) => item);
+};
+
+const searchPublicDatabase = (database, query, options = {}) => searchRecords(buildSearchIndex(database), query, options);
+
+const addSummaryArticleToDatabase = (target, summaries, articleId) => {
+    if (!articleId || target.articles[articleId] || !summaries?.[articleId]) {
+        return;
+    }
+
+    target.articles[articleId] = deepClone(summaries[articleId]);
+};
+
+const buildPageDataPayloadFromArtifacts = (query = {}) => {
+    const requestedPage = String(query.page || '').trim();
+    const requestedArticleId = String(query.article || '').trim();
+    const requestedSectionId = String(query.section || '').trim();
+    const requestedGroupId = String(query.group || '').trim();
+    const requestedQuery = String(query.query || '').trim();
+    const publicBase = loadPublicBaseArtifact();
+    const articleSummaries = loadArticleSummariesArtifact();
+
+    if (!publicBase || !articleSummaries) {
+        return null;
+    }
+
+    if (requestedPage === 'home') {
+        const database = deepClone(publicBase);
+        HOME_FEATURED_ARTICLE_IDS.forEach((articleId) => addSummaryArticleToDatabase(database, articleSummaries, articleId));
+
+        return {
+            ok: true,
+            mode: 'home',
+            isPartial: true,
+            database,
+        };
+    }
+
+    if (requestedPage === 'article') {
+        const article = loadArticleArtifact(requestedArticleId);
+
+        if (!article) {
+            return null;
+        }
+
+        const database = deepClone(publicBase);
+        database.articles[requestedArticleId] = article;
+
+        const questGuideBlock = (article.blocks || []).find((block) => block?.type === 'questGuide') || null;
+        const relatedIds = new Set([...(article.related || []), ...(questGuideBlock?.relatedQuestIds || [])]);
+        relatedIds.forEach((articleId) => addSummaryArticleToDatabase(database, articleSummaries, articleId));
+
+        return {
+            ok: true,
+            mode: 'article',
+            isPartial: true,
+            requestedArticleId,
+            database,
+        };
+    }
+
+    if (requestedPage === 'section') {
+        const fallbackSectionId = Object.values(publicBase.sections || {}).sort(sortByOrder)[0]?.id || '';
+        const sectionId = requestedSectionId || fallbackSectionId;
+        const section = loadSectionArtifact(sectionId);
+
+        if (!section) {
+            return null;
+        }
+
+        const normalizedGroupId = normalizeServerGroupId(section, requestedGroupId);
+        const activeGroup = resolveServerGroup(section, requestedGroupId);
+        const database = deepClone(publicBase);
+        database.sections[sectionId] = section;
+
+        if (activeGroup) {
+            (activeGroup.entries || []).forEach((articleId) => addSummaryArticleToDatabase(database, articleSummaries, articleId));
+            addSummaryArticleToDatabase(database, articleSummaries, getServerGroupLeadArticleId({ articles: articleSummaries }, section, activeGroup));
+        } else {
+            (section.groups || []).forEach((group) => {
+                addSummaryArticleToDatabase(database, articleSummaries, getServerGroupLeadArticleId({ articles: articleSummaries }, section, group));
+            });
+        }
+
+        return {
+            ok: true,
+            mode: 'section',
+            isPartial: true,
+            requestedSectionId: sectionId,
+            requestedGroupId,
+            resolvedGroupId: normalizedGroupId,
+            database,
+        };
+    }
+
+    if (requestedPage === 'search') {
+        return {
+            ok: true,
+            mode: 'search',
+            isPartial: true,
+            requestedQuery,
+            searchResults: searchRecords(loadSearchIndexArtifact(), requestedQuery, { limit: 30 }),
+            database: deepClone(publicBase),
+        };
+    }
+
+    return null;
 };
 
 const buildPageDataPayload = (database, query = {}) => {
@@ -1274,8 +1655,31 @@ app.get(
 app.get(
     '/api/page-data',
     asyncRoute(async (req, res) => {
+        const artifactPayload = buildPageDataPayloadFromArtifacts(req.query || {});
+
+        if (artifactPayload) {
+            sendNoStoreJson(res, artifactPayload);
+            return;
+        }
+
         const database = getDatabaseSnapshot();
         sendNoStoreJson(res, buildPageDataPayload(database, req.query || {}));
+    })
+);
+
+app.get(
+    '/api/admin/bootstrap',
+    requireAdmin,
+    asyncRoute(async (req, res) => {
+        const artifactPayload = loadAdminBootstrapArtifact();
+
+        if (artifactPayload) {
+            sendNoStoreJson(res, artifactPayload);
+            return;
+        }
+
+        const database = getDatabaseSnapshot();
+        sendNoStoreJson(res, buildAdminBootstrapPayload(database));
     })
 );
 
@@ -1501,6 +1905,7 @@ const start = async () => {
     app.locals.db = db;
     app.locals.database = null;
     app.locals.databaseMeta = initialMeta;
+    invalidateArtifactCache();
 
     if (db) {
         const database = loadDatabaseFromDisk().data;
