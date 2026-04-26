@@ -452,6 +452,18 @@ const renderFactList = (items = [], className = 'wiki-meta') =>
         `
         : '';
 
+const renderKnowledgeCardMedia = (imageSrc, altText) => {
+    if (!imageSrc) {
+        return '';
+    }
+
+    return `
+        <div class="knowledge-card__media">
+            <img class="knowledge-card__image" src="${escapeHtml(imageSrc)}" alt="${escapeHtml(altText || 'Lineage II')}" loading="lazy" />
+        </div>
+    `;
+};
+
 const renderArticlePreview = (database, articleId) => {
     const article = getArticle(database, articleId);
 
@@ -461,6 +473,7 @@ const renderArticlePreview = (database, articleId) => {
 
     return `
         <article class="knowledge-card">
+            ${renderKnowledgeCardMedia(article.heroImage, article.title)}
             <div class="knowledge-card__head">
                 <span class="knowledge-card__eyebrow">${escapeHtml(article.eyebrow || 'Материал')}</span>
                 <h3 class="knowledge-card__title">
@@ -2090,6 +2103,7 @@ const renderSearchResults = (database) => {
                                 .map(
                                     (item) => `
                                         <article class="knowledge-card">
+                                            ${renderKnowledgeCardMedia(item.previewImage, item.title)}
                                             <div class="knowledge-card__head">
                                                 <span class="knowledge-card__eyebrow">${escapeHtml(item.type === 'section' ? 'Раздел' : 'Материал')}</span>
                                                 <h2 class="knowledge-card__title">
@@ -2459,3 +2473,5 @@ window.addEventListener('l2wiki:weapons-data-loaded', function (event) {
     console.log('[Wiki] Weapons data loaded, re-rendering page', event.detail);
     renderCurrentPage();
 });
+
+

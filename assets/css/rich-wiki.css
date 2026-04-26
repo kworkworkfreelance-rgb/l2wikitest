@@ -1962,6 +1962,22 @@
     gap: clamp(16px, 1.25vw, 22px);
 }
 
+.knowledge-card__media {
+    margin-bottom: 14px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.02));
+    box-shadow: inset 0 0 0 1px rgba(44, 65, 89, 0.08);
+    aspect-ratio: 16 / 9;
+}
+
+.knowledge-card__image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .footer-bottomline__actions {
     justify-content: flex-end;
 }

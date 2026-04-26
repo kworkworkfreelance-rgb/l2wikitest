@@ -867,6 +867,7 @@ const buildArticleSearchRecord = (database, article) => {
         sectionTitle: section?.title || '',
         group: article.group || '',
         groupTitle: group?.label || '',
+        previewImage: article.heroImage || '',
         searchableText: [
             article.title,
             article.summary,
@@ -889,6 +890,7 @@ const buildSectionSearchRecord = (section) => ({
     summary: section.description || '',
     section: section.id,
     sectionTitle: section.title || '',
+    previewImage: (section.groups || []).find((group) => group?.iconSrc)?.iconSrc || '',
     searchableText: [
         section.title,
         section.description,

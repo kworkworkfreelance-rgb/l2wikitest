@@ -1087,6 +1087,7 @@
             sectionTitle: section.title,
             group: '',
             groupTitle: '',
+            previewImage: (section.groups || []).find((group) => group.iconSrc)?.iconSrc || '',
             searchableText: [
                 section.title,
                 section.description,
@@ -1109,6 +1110,7 @@
             sectionTitle: currentDatabase.sections[article.section]?.title || article.section,
             groupTitle:
                 currentDatabase.sections[article.section]?.groups?.find((group) => group.id === article.group)?.label || article.group,
+            previewImage: article.heroImage || '',
             searchableText: [
                 article.title,
                 article.summary,

@@ -135,10 +135,13 @@
             ${results
                 .map((item) => {
                     const href = item.type === 'section' ? `${routes.section}${encodeURIComponent(item.id)}` : `${routes.article}${encodeURIComponent(item.id)}`;
+                    const preview = item.previewImage
+                        ? `<img class="search-modal__thumb" src="${item.previewImage}" alt="${item.title}" loading="lazy" />`
+                        : `<div class="search-modal__glyph">${item.type === 'section' ? 'S' : 'A'}</div>`;
                     return `
                         <a href="${href}" class="search-modal__item">
                             <div class="search-modal__icon">
-                                <div class="search-modal__glyph">${item.type === 'section' ? 'S' : 'A'}</div>
+                                ${preview}
                             </div>
                             <div class="search-modal__content">
                                 <div class="search-modal__title">${item.title}</div>
@@ -211,3 +214,4 @@
 
     resetEmptyState();
 })();
+
