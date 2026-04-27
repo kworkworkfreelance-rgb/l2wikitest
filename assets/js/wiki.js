@@ -80,7 +80,31 @@ const readDatabase = () => store?.getDatabase?.() || window.L2WIKI_SEED_DATA || 
 const readPageData = () => window.L2WIKI_PAGE_DATA || null;
 const hasDatabaseContent = (database) =>
     Boolean(Object.keys(database?.sections || {}).length || Object.keys(database?.articles || {}).length);
-const isDataPending = (database) => !window.L2WIKI_DATA_LOADED && !hasDatabaseContent(database);
+const isDataPending = (database) => {
+    if (window.L2WIKI_DATA_LOADED) {
+        return false;
+    }
+
+    if (!hasDatabaseContent(database)) {
+        return true;
+    }
+
+    if (currentPage === 'article') {
+        const articleId = getParam('article') || '';
+        if (articleId && !database?.articles?.[articleId]) {
+            return true;
+        }
+    }
+
+    if (currentPage === 'section') {
+        const sectionId = getParam('section') || '';
+        if (sectionId && !database?.sections?.[sectionId]) {
+            return true;
+        }
+    }
+
+    return false;
+};
 const getSection = (database, id) => database.sections?.[id] || null;
 const getArticle = (database, id) => database.articles?.[id] || null;
 const sanitizeInternalHref = (href, database = readDatabase()) => {
@@ -1629,6 +1653,39 @@ const renderSkillProgression = (tables = []) => {
 
 const isGradeTableBlock = (block) => block?.type === 'table' && /^(No Grade|[A-Z]\d{0,2} Grade)$/i.test(String(block?.title || '').trim());
 
+const normalizeGradeTitle = (value = '') => {
+    const raw = String(value || '').trim();
+    const normalized = raw.toUpperCase().replace(/\s+/g, ' ').trim();
+
+    if (!normalized) {
+        return '';
+    }
+
+    if (normalized === 'NG' || normalized === 'NO GRADE' || normalized === 'NOGRADE') {
+        return 'No Grade';
+    }
+
+    if (normalized.includes('S84')) {
+        return 'S84 Grade';
+    }
+
+    if (normalized.includes('S80')) {
+        return 'S80 Grade';
+    }
+
+    if (normalized === 'S' || normalized === 'S GRADE') {
+        return 'S Grade';
+    }
+
+    const letterMatch = normalized.match(/^([A-D])(?: GRADE)?$/);
+
+    if (letterMatch) {
+        return `${letterMatch[1]} Grade`;
+    }
+
+    return raw;
+};
+
 const getGradeArticleParts = (article) => {
     const blocks = article?.blocks || [];
     const gradeTables = blocks.filter(isGradeTableBlock);
@@ -1651,12 +1708,12 @@ const getGradeArticleParts = (article) => {
     };
 };
 
-const renderGradeBrowser = (tables = [], articleTitle = '') => {
+const renderGradeBrowser = (tables = [], articleTitle = '', activeGradeOverride = '') => {
     if (!tables.length) {
         return '';
     }
 
-    const activeGrade = tables[0].title || 'No Grade';
+    const activeGrade = activeGradeOverride || tables[0].title || 'No Grade';
 
     return `
         <section class="wiki-panel rich-block rich-block--grades" data-grade-browser data-active-grade="${escapeHtml(activeGrade)}">
@@ -1849,6 +1906,23 @@ const renderSectionPage = (database) => {
 
     if (!target) {
         return;
+    }
+
+    window.scrollTo(0, 0);
+
+    // Если группа имеет явный landingArticleId, то `section.html?section=...&group=...` считаем лишней
+    // промежуточной страницей и уводим сразу на статью категории.
+    if (section && normalizedGroupId) {
+        const selectedGroup = findGroup(section, normalizedGroupId);
+
+        if (selectedGroup?.landingArticleId) {
+            const landingArticle = getGroupLandingArticle(database, section, selectedGroup);
+
+            if (landingArticle?.id) {
+                window.location.replace(buildArticleUrl(landingArticle.id));
+                return;
+            }
+        }
     }
 
     if (!section) {
@@ -2275,6 +2349,8 @@ const renderArticlePage = (database) => {
         return;
     }
 
+    window.scrollTo(0, 0);
+
     if (article?.id) {
         target.dataset.articleId = article.id;
     } else {
@@ -2299,6 +2375,13 @@ const renderArticlePage = (database) => {
     const preferSourceQuestHtml = hasQuestHtmlBlock && String(articleForRender.source?.path || '').startsWith('quests/');
     const skillArticleParts = !isQuestDetail ? getSkillArticleParts(articleForRender) : null;
     const gradeArticleParts = !isQuestDetail ? getGradeArticleParts(articleForRender) : null;
+    const requestedGradeTitle = gradeArticleParts ? normalizeGradeTitle(getParam('grade')) : '';
+    const gradeBrowserActiveTitle =
+        gradeArticleParts &&
+        requestedGradeTitle &&
+        gradeArticleParts.gradeTables.some((table) => String(table?.title || '').trim() === requestedGradeTitle)
+            ? requestedGradeTitle
+            : '';
     const isFlatArticle = articleForRender.layout === 'contacts-page';
     const articleBlocksHtml = preferSourceQuestHtml
         ? (articleForRender.blocks || [])
@@ -2315,9 +2398,13 @@ const renderArticlePage = (database) => {
             : isQuestDetail
               ? renderQuestCompatContent(articleForRender)
               : skillArticleParts
-                ? `${skillArticleParts.before}${renderSkillProgression(skillArticleParts.skillTables)}${skillArticleParts.after}`
-                : gradeArticleParts
-                  ? `${gradeArticleParts.before}${renderGradeBrowser(gradeArticleParts.gradeTables, articleForRender.title)}${gradeArticleParts.after}`
+                  ? `${skillArticleParts.before}${renderSkillProgression(skillArticleParts.skillTables)}${skillArticleParts.after}`
+              : gradeArticleParts
+                  ? `${gradeArticleParts.before}${renderGradeBrowser(
+                        gradeArticleParts.gradeTables,
+                        articleForRender.title,
+                        gradeBrowserActiveTitle
+                    )}${gradeArticleParts.after}`
                   : (articleForRender.blocks || []).map(renderBlock).join('');
     const relatedIds = isFlatArticle
         ? []

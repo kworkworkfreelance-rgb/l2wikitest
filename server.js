@@ -117,6 +117,7 @@ const REQUEST_BODY_LIMIT = process.env.L2WIKI_REQUEST_BODY_LIMIT || '100mb';
 const SQLITE_SYNC_ENABLED = parseBooleanEnv(process.env.L2WIKI_ENABLE_SQLITE_SYNC, false);
 const STATIC_PUBLISH_ENABLED = parseBooleanEnv(process.env.L2WIKI_ENABLE_STATIC_PUBLISH, !process.env.RENDER);
 const BACKUP_SNAPSHOTS_ENABLED = parseBooleanEnv(process.env.L2WIKI_ENABLE_BACKUPS, !process.env.RENDER);
+const ARTIFACT_MUTATIONS_ENABLED = parseBooleanEnv(process.env.L2WIKI_MUTATE_ARTIFACTS, Boolean(process.env.RENDER));
 
 const ADMIN_SESSIONS = new Map();
 
@@ -1247,6 +1248,370 @@ const writeRuntimeArtifacts = (database, reason = 'publish') => {
     }
 };
 
+const loadWritableJsonArtifact = (storagePath, fallbackPath, label) => {
+    const fromStorage = readJsonFileIfExists(storagePath);
+
+    if (fromStorage) {
+        return fromStorage;
+    }
+
+    const fromApp = readJsonFileIfExists(fallbackPath);
+
+    if (fromApp) {
+        writeFileAtomic(storagePath, JSON.stringify(fromApp));
+        return fromApp;
+    }
+
+    console.warn(`[artifacts] Missing ${label || 'artifact'}: ${storagePath}`);
+    return null;
+};
+
+const buildPublicSectionSummaryFromSection = (section = {}) => ({
+    id: section.id || '',
+    title: section.title || '',
+    description: section.description || '',
+    order: Number.isFinite(Number(section.order)) ? Number(section.order) : 9999,
+    groups: (Array.isArray(section.groups) ? section.groups : []).map((group) => ({
+        id: group?.id || '',
+        label: group?.label || '',
+        description: group?.description || '',
+        order: Number.isFinite(Number(group?.order)) ? Number(group.order) : 9999,
+        entries: [group?.landingArticleId || (group?.entries || [])[0] || ''].filter(Boolean),
+        landingArticleId: group?.landingArticleId || '',
+        iconSrc: group?.iconSrc || '',
+        iconAlt: group?.iconAlt || '',
+    })),
+});
+
+const upsertArticleIntoSharedArtifacts = (article) => {
+    const publicBase = loadWritableJsonArtifact(PAGE_DATA_BASE_PATH, APP_PAGE_DATA_BASE_PATH, 'public-base');
+    const articleSummaries = loadWritableJsonArtifact(
+        PAGE_DATA_ARTICLE_SUMMARIES_PATH,
+        APP_PAGE_DATA_ARTICLE_SUMMARIES_PATH,
+        'article-summaries'
+    );
+    const searchIndex = loadWritableJsonArtifact(PAGE_DATA_SEARCH_INDEX_PATH, APP_PAGE_DATA_SEARCH_INDEX_PATH, 'search-index');
+    const adminBootstrap = loadWritableJsonArtifact(ADMIN_BOOTSTRAP_PATH, APP_ADMIN_BOOTSTRAP_PATH, 'admin-bootstrap');
+
+    if (!publicBase || !articleSummaries || !searchIndex || !adminBootstrap) {
+        return;
+    }
+
+    articleSummaries[article.id] = buildPublicArticleSummary(article);
+
+    const searchRecord = buildArticleSearchRecord({ sections: publicBase.sections || {}, articles: {} }, article);
+    const recordIndex = Array.isArray(searchIndex)
+        ? searchIndex.findIndex((record) => record?.type === 'article' && record?.id === article.id)
+        : -1;
+
+    if (Array.isArray(searchIndex)) {
+        if (recordIndex >= 0) {
+            searchIndex[recordIndex] = searchRecord;
+        } else {
+            searchIndex.push(searchRecord);
+        }
+    }
+
+    if (adminBootstrap?.database?.articles) {
+        adminBootstrap.database.articles[article.id] = buildPublicArticleSummary(article);
+        adminBootstrap.articleSummaryIds = Array.isArray(adminBootstrap.articleSummaryIds) ? adminBootstrap.articleSummaryIds : [];
+
+        if (!adminBootstrap.articleSummaryIds.includes(article.id)) {
+            adminBootstrap.articleSummaryIds.push(article.id);
+        }
+    }
+
+    const updatedAt = new Date().toISOString();
+    publicBase.updatedAt = updatedAt;
+    adminBootstrap.updatedAt = updatedAt;
+    if (adminBootstrap?.database) {
+        adminBootstrap.database.updatedAt = updatedAt;
+    }
+
+    writeFileAtomic(PAGE_DATA_ARTICLE_SUMMARIES_PATH, JSON.stringify(articleSummaries));
+    writeFileAtomic(PAGE_DATA_SEARCH_INDEX_PATH, JSON.stringify(searchIndex));
+    writeFileAtomic(ADMIN_BOOTSTRAP_PATH, JSON.stringify(adminBootstrap));
+    writeFileAtomic(PAGE_DATA_BASE_PATH, JSON.stringify(publicBase));
+};
+
+const deleteArticleFromSharedArtifacts = (articleId) => {
+    const publicBase = loadWritableJsonArtifact(PAGE_DATA_BASE_PATH, APP_PAGE_DATA_BASE_PATH, 'public-base');
+    const articleSummaries = loadWritableJsonArtifact(
+        PAGE_DATA_ARTICLE_SUMMARIES_PATH,
+        APP_PAGE_DATA_ARTICLE_SUMMARIES_PATH,
+        'article-summaries'
+    );
+    const searchIndex = loadWritableJsonArtifact(PAGE_DATA_SEARCH_INDEX_PATH, APP_PAGE_DATA_SEARCH_INDEX_PATH, 'search-index');
+    const adminBootstrap = loadWritableJsonArtifact(ADMIN_BOOTSTRAP_PATH, APP_ADMIN_BOOTSTRAP_PATH, 'admin-bootstrap');
+
+    if (!publicBase || !articleSummaries || !searchIndex || !adminBootstrap) {
+        return;
+    }
+
+    delete articleSummaries[articleId];
+
+    if (Array.isArray(searchIndex)) {
+        const next = searchIndex.filter((record) => !(record?.type === 'article' && record?.id === articleId));
+        searchIndex.length = 0;
+        next.forEach((item) => searchIndex.push(item));
+    }
+
+    if (adminBootstrap?.database?.articles) {
+        delete adminBootstrap.database.articles[articleId];
+        if (Array.isArray(adminBootstrap.articleSummaryIds)) {
+            adminBootstrap.articleSummaryIds = adminBootstrap.articleSummaryIds.filter((id) => id !== articleId);
+        }
+    }
+
+    const updatedAt = new Date().toISOString();
+    publicBase.updatedAt = updatedAt;
+    adminBootstrap.updatedAt = updatedAt;
+    if (adminBootstrap?.database) {
+        adminBootstrap.database.updatedAt = updatedAt;
+    }
+
+    writeFileAtomic(PAGE_DATA_ARTICLE_SUMMARIES_PATH, JSON.stringify(articleSummaries));
+    writeFileAtomic(PAGE_DATA_SEARCH_INDEX_PATH, JSON.stringify(searchIndex));
+    writeFileAtomic(ADMIN_BOOTSTRAP_PATH, JSON.stringify(adminBootstrap));
+    writeFileAtomic(PAGE_DATA_BASE_PATH, JSON.stringify(publicBase));
+};
+
+const upsertSectionIntoSharedArtifacts = (section) => {
+    const publicBase = loadWritableJsonArtifact(PAGE_DATA_BASE_PATH, APP_PAGE_DATA_BASE_PATH, 'public-base');
+    const searchIndex = loadWritableJsonArtifact(PAGE_DATA_SEARCH_INDEX_PATH, APP_PAGE_DATA_SEARCH_INDEX_PATH, 'search-index');
+    const adminBootstrap = loadWritableJsonArtifact(ADMIN_BOOTSTRAP_PATH, APP_ADMIN_BOOTSTRAP_PATH, 'admin-bootstrap');
+
+    if (!publicBase || !searchIndex || !adminBootstrap) {
+        return;
+    }
+
+    const summary = buildPublicSectionSummaryFromSection(section);
+    publicBase.sections = publicBase.sections || {};
+    publicBase.sections[section.id] = summary;
+
+    if (Array.isArray(searchIndex)) {
+        const sectionRecord = buildSectionSearchRecord(summary);
+        const index = searchIndex.findIndex((record) => record?.type === 'section' && record?.id === section.id);
+        if (index >= 0) {
+            searchIndex[index] = sectionRecord;
+        } else {
+            searchIndex.push(sectionRecord);
+        }
+    }
+
+    if (adminBootstrap?.database?.sections) {
+        adminBootstrap.database.sections[section.id] = deepClone(section);
+    }
+
+    const updatedAt = new Date().toISOString();
+    publicBase.updatedAt = updatedAt;
+    adminBootstrap.updatedAt = updatedAt;
+    if (adminBootstrap?.database) {
+        adminBootstrap.database.updatedAt = updatedAt;
+    }
+
+    writeFileAtomic(PAGE_DATA_BASE_PATH, JSON.stringify(publicBase));
+    writeFileAtomic(PAGE_DATA_SEARCH_INDEX_PATH, JSON.stringify(searchIndex));
+    writeFileAtomic(ADMIN_BOOTSTRAP_PATH, JSON.stringify(adminBootstrap));
+};
+
+const upsertSiteIntoSharedArtifacts = (site) => {
+    const publicBase = loadWritableJsonArtifact(PAGE_DATA_BASE_PATH, APP_PAGE_DATA_BASE_PATH, 'public-base');
+    const adminBootstrap = loadWritableJsonArtifact(ADMIN_BOOTSTRAP_PATH, APP_ADMIN_BOOTSTRAP_PATH, 'admin-bootstrap');
+
+    if (!publicBase || !adminBootstrap) {
+        return;
+    }
+
+    publicBase.site = deepClone(site || {});
+    if (adminBootstrap?.database) {
+        adminBootstrap.database.site = deepClone(site || {});
+    }
+
+    const updatedAt = new Date().toISOString();
+    publicBase.updatedAt = updatedAt;
+    adminBootstrap.updatedAt = updatedAt;
+    if (adminBootstrap?.database) {
+        adminBootstrap.database.updatedAt = updatedAt;
+    }
+
+    writeFileAtomic(PAGE_DATA_BASE_PATH, JSON.stringify(publicBase));
+    writeFileAtomic(ADMIN_BOOTSTRAP_PATH, JSON.stringify(adminBootstrap));
+};
+
+const queueArtifactMutation = (reason, mutator) => {
+    const run = async () => mutator();
+
+    const task = mutationQueue.then(run, async (error) => {
+        console.error(`[artifacts] Previous mutation failed before "${reason}":`, error);
+        return run();
+    });
+
+    mutationQueue = task.then(
+        () => undefined,
+        () => undefined
+    );
+
+    return task;
+};
+
+const listJsonBasenames = (dirPath) => {
+    if (!dirPath || !fs.existsSync(dirPath)) {
+        return [];
+    }
+
+    try {
+        return fs
+            .readdirSync(dirPath, { withFileTypes: true })
+            .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+            .map((entry) => entry.name.replace(/\.json$/i, ''));
+    } catch (error) {
+        console.warn(`[artifacts] Failed to read directory ${dirPath}: ${error.message}`);
+        return [];
+    }
+};
+
+const loadAllSectionArtifacts = () => {
+    const ids = new Set([...listJsonBasenames(PAGE_DATA_SECTIONS_DIR), ...listJsonBasenames(APP_PAGE_DATA_SECTIONS_DIR)]);
+    return Array.from(ids)
+        .map((id) => loadSectionArtifact(id))
+        .filter(Boolean);
+};
+
+const loadSectionForMutation = (sectionId) => {
+    const normalizedId = String(sectionId || '').trim();
+    if (!normalizedId) {
+        return null;
+    }
+
+    const fromArtifact = loadSectionArtifact(normalizedId);
+    if (fromArtifact) {
+        return deepClone(fromArtifact);
+    }
+
+    const bootstrap = loadAdminBootstrapArtifact();
+    const fromBootstrap = bootstrap?.database?.sections?.[normalizedId];
+    return fromBootstrap ? deepClone(fromBootstrap) : null;
+};
+
+const writeSectionArtifactFile = (section) => {
+    if (!section?.id) {
+        return;
+    }
+
+    writeFileAtomic(path.join(PAGE_DATA_SECTIONS_DIR, `${section.id}.json`), JSON.stringify(section));
+};
+
+const writeArticleArtifactFile = (article) => {
+    if (!article?.id) {
+        return;
+    }
+
+    writeFileAtomic(path.join(PAGE_DATA_ARTICLES_DIR, `${article.id}.json`), JSON.stringify(article));
+};
+
+const removeArticleArtifactFile = (articleId) => {
+    const normalizedId = String(articleId || '').trim();
+    if (!normalizedId) {
+        return;
+    }
+
+    const targetPath = path.join(PAGE_DATA_ARTICLES_DIR, `${normalizedId}.json`);
+
+    try {
+        fs.rmSync(targetPath, { force: true });
+    } catch (error) {
+        console.warn(`[artifacts] Failed to remove ${targetPath}: ${error.message}`);
+    }
+};
+
+const updateSectionArticleMembership = (articleId, previousSummary, nextArticle) => {
+    const normalizedArticleId = String(articleId || '').trim();
+    if (!normalizedArticleId) {
+        return;
+    }
+
+    const prevSectionId = String(previousSummary?.section || '').trim();
+    const prevGroupId = String(previousSummary?.group || '').trim();
+    const nextSectionId = String(nextArticle?.section || '').trim();
+    const nextGroupId = String(nextArticle?.group || '').trim();
+
+    const touched = new Map();
+    const dirty = new Set();
+
+    const loadTouchedSection = (sectionId) => {
+        const normalizedId = String(sectionId || '').trim();
+        if (!normalizedId) {
+            return null;
+        }
+
+        if (touched.has(normalizedId)) {
+            return touched.get(normalizedId) || null;
+        }
+
+        const section = loadSectionForMutation(normalizedId);
+        touched.set(normalizedId, section);
+        return section;
+    };
+
+    const mutateGroupEntries = (section, groupId, mutator) => {
+        if (!section || !groupId) {
+            return false;
+        }
+
+        const groups = Array.isArray(section.groups) ? section.groups : [];
+        const group = groups.find((candidate) => candidate?.id === groupId);
+
+        if (!group) {
+            return false;
+        }
+
+        group.entries = Array.isArray(group.entries) ? group.entries : [];
+        const before = group.entries.join('\u0000');
+        mutator(group.entries);
+        const after = group.entries.join('\u0000');
+        return before !== after;
+    };
+
+    // Remove from previous section/group if moved.
+    if (prevSectionId && prevGroupId && (prevSectionId !== nextSectionId || prevGroupId !== nextGroupId)) {
+        const prevSection = loadTouchedSection(prevSectionId);
+        const changed = mutateGroupEntries(prevSection, prevGroupId, (entries) => {
+            const next = entries.filter((id) => id !== normalizedArticleId);
+            entries.length = 0;
+            next.forEach((id) => entries.push(id));
+        });
+
+        if (changed) {
+            dirty.add(prevSectionId);
+        }
+    }
+
+    // Ensure present in target section/group.
+    if (nextSectionId && nextGroupId) {
+        const nextSection = loadTouchedSection(nextSectionId);
+        const changed = mutateGroupEntries(nextSection, nextGroupId, (entries) => {
+            if (!entries.includes(normalizedArticleId)) {
+                entries.push(normalizedArticleId);
+            }
+        });
+
+        if (changed) {
+            dirty.add(nextSectionId);
+        }
+    }
+
+    for (const sectionId of dirty) {
+        const section = touched.get(sectionId);
+        if (!section?.id) {
+            continue;
+        }
+
+        writeSectionArtifactFile(section);
+        upsertSectionIntoSharedArtifacts(section);
+    }
+};
+
 const searchRecords = (source, query, options = {}) => {
     const normalized = normalizeSearchText(query);
 
@@ -1646,7 +2011,7 @@ app.get(
         const wantsFullDatabase = String(req.query.full || '') === '1';
         sendNoStoreJson(res, {
             ok: true,
-            database: wantsFullDatabase ? getDatabaseSnapshot() : null,
+            database: wantsFullDatabase && !ARTIFACT_MUTATIONS_ENABLED ? getDatabaseSnapshot() : null,
             meta: getLiveMeta(),
         });
     })
@@ -1659,6 +2024,26 @@ app.get(
 
         if (artifactPayload) {
             sendNoStoreJson(res, artifactPayload);
+            return;
+        }
+
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            const requestedPage = String((req.query || {}).page || '').trim();
+            const requestedArticleId = String((req.query || {}).article || '').trim();
+            const requestedSectionId = String((req.query || {}).section || '').trim();
+            const requestedGroupId = String((req.query || {}).group || '').trim();
+            const publicBase = loadPublicBaseArtifact() || { version: 2, updatedAt: new Date().toISOString(), site: { name: 'L2Wiki.Su' }, sections: {}, articles: {} };
+
+            sendNoStoreJson(res, {
+                ok: false,
+                mode: requestedPage || 'unknown',
+                isPartial: true,
+                requestedArticleId,
+                requestedSectionId,
+                requestedGroupId,
+                error: 'Материал не найден',
+                database: deepClone(publicBase),
+            });
             return;
         }
 
@@ -1678,6 +2063,11 @@ app.get(
             return;
         }
 
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            res.status(500).json({ error: 'Admin bootstrap is missing' });
+            return;
+        }
+
         const database = getDatabaseSnapshot();
         sendNoStoreJson(res, buildAdminBootstrapPayload(database));
     })
@@ -1687,6 +2077,26 @@ app.get(
     '/api/export',
     requireAdmin,
     asyncRoute(async (req, res) => {
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            const publicBase = loadPublicBaseArtifact();
+            const articleSummaries = loadArticleSummariesArtifact();
+            const adminBootstrap = loadAdminBootstrapArtifact();
+            const sections = adminBootstrap?.database?.sections || Object.fromEntries(loadAllSectionArtifacts().map((section) => [section.id, section]));
+
+            sendNoStoreJson(res, {
+                ok: true,
+                mode: 'artifacts',
+                database: {
+                    version: Number(publicBase?.version) || 2,
+                    updatedAt: publicBase?.updatedAt || new Date().toISOString(),
+                    site: deepClone(publicBase?.site || {}),
+                    sections: deepClone(sections || {}),
+                    articles: deepClone(articleSummaries || {}),
+                },
+            });
+            return;
+        }
+
         if (!sendCanonicalDatabase(res)) {
             sendNoStoreJson(res, getDatabaseSnapshot());
         }
@@ -1707,6 +2117,14 @@ app.get(
 app.get(
     '/api/sections',
     asyncRoute(async (req, res) => {
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            const adminBootstrap = loadAdminBootstrapArtifact();
+            const fromBootstrap = adminBootstrap?.database?.sections && typeof adminBootstrap.database.sections === 'object' ? adminBootstrap.database.sections : null;
+            const sections = (fromBootstrap ? Object.values(fromBootstrap) : loadAllSectionArtifacts()).sort(sortByOrder);
+            res.json(sections.map((section) => deepClone(section)));
+            return;
+        }
+
         const database = getDatabaseSnapshot();
         const sections = Object.values(database.sections || {}).sort(sortByOrder);
         res.json(sections);
@@ -1716,6 +2134,18 @@ app.get(
 app.get(
     '/api/section/:id',
     asyncRoute(async (req, res) => {
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            const section = loadSectionForMutation(req.params.id);
+
+            if (!section) {
+                res.status(404).json({ error: 'Section not found' });
+                return;
+            }
+
+            res.json(deepClone(section));
+            return;
+        }
+
         const database = getDatabaseSnapshot();
         const section = database.sections?.[req.params.id];
 
@@ -1733,6 +2163,29 @@ app.put(
     requireAdmin,
     asyncRoute(async (req, res) => {
         const sectionId = String(req.params.id || '').trim();
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            const savedSection = await queueArtifactMutation(`section-${sectionId}`, async () => {
+                const existing = loadSectionForMutation(sectionId) || {};
+                const nextSection = normalizeSection(
+                    {
+                        ...existing,
+                        ...(req.body || {}),
+                        id: sectionId,
+                    },
+                    sectionId
+                );
+
+                writeSectionArtifactFile(nextSection);
+                upsertSectionIntoSharedArtifacts(nextSection);
+                invalidateArtifactCache();
+
+                return nextSection;
+            });
+
+            res.json(deepClone(savedSection));
+            return;
+        }
+
         const savedDatabase = await queueDatabaseMutation(`section-${sectionId}`, async (database) => {
             const existing = database.sections?.[sectionId] || {};
             database.sections[sectionId] = normalizeSection(
@@ -1755,6 +2208,69 @@ app.delete(
     requireAdmin,
     asyncRoute(async (req, res) => {
         const sectionId = String(req.params.id || '').trim();
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            const articleSummaries = loadArticleSummariesArtifact();
+            const hasArticles = Object.values(articleSummaries || {}).some((article) => article?.section === sectionId);
+
+            if (hasArticles) {
+                res.status(400).json({ error: 'Сначала перенесите или удалите статьи из этого раздела' });
+                return;
+            }
+
+            await queueArtifactMutation(`delete-section-${sectionId}`, async () => {
+                const sectionPath = path.join(PAGE_DATA_SECTIONS_DIR, `${sectionId}.json`);
+                try {
+                    fs.rmSync(sectionPath, { force: true });
+                } catch (error) {
+                    console.warn(`[artifacts] Failed to remove ${sectionPath}: ${error.message}`);
+                }
+
+                const publicBase = loadWritableJsonArtifact(PAGE_DATA_BASE_PATH, APP_PAGE_DATA_BASE_PATH, 'public-base');
+                const searchIndex = loadWritableJsonArtifact(PAGE_DATA_SEARCH_INDEX_PATH, APP_PAGE_DATA_SEARCH_INDEX_PATH, 'search-index');
+                const adminBootstrap = loadWritableJsonArtifact(ADMIN_BOOTSTRAP_PATH, APP_ADMIN_BOOTSTRAP_PATH, 'admin-bootstrap');
+
+                if (publicBase?.sections) {
+                    delete publicBase.sections[sectionId];
+                }
+
+                if (Array.isArray(searchIndex)) {
+                    const next = searchIndex.filter((record) => !(record?.type === 'section' && record?.id === sectionId));
+                    searchIndex.length = 0;
+                    next.forEach((item) => searchIndex.push(item));
+                }
+
+                if (adminBootstrap?.database?.sections) {
+                    delete adminBootstrap.database.sections[sectionId];
+                }
+
+                const updatedAt = new Date().toISOString();
+                if (publicBase) {
+                    publicBase.updatedAt = updatedAt;
+                }
+                if (adminBootstrap) {
+                    adminBootstrap.updatedAt = updatedAt;
+                    if (adminBootstrap.database) {
+                        adminBootstrap.database.updatedAt = updatedAt;
+                    }
+                }
+
+                if (publicBase) {
+                    writeFileAtomic(PAGE_DATA_BASE_PATH, JSON.stringify(publicBase));
+                }
+                if (searchIndex) {
+                    writeFileAtomic(PAGE_DATA_SEARCH_INDEX_PATH, JSON.stringify(searchIndex));
+                }
+                if (adminBootstrap) {
+                    writeFileAtomic(ADMIN_BOOTSTRAP_PATH, JSON.stringify(adminBootstrap));
+                }
+
+                invalidateArtifactCache();
+            });
+
+            res.json({ ok: true });
+            return;
+        }
+
         const database = getDatabaseSnapshot();
         const hasArticles = Object.values(database.articles || {}).some((article) => article.section === sectionId);
 
@@ -1775,6 +2291,18 @@ app.delete(
 app.get(
     '/api/article/:id',
     asyncRoute(async (req, res) => {
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            const article = loadArticleArtifact(req.params.id);
+
+            if (!article) {
+                res.status(404).json({ error: 'Article not found' });
+                return;
+            }
+
+            res.json(deepClone(article));
+            return;
+        }
+
         const database = getDatabaseSnapshot();
         const article = database.articles?.[req.params.id];
 
@@ -1792,6 +2320,37 @@ app.put(
     requireAdmin,
     asyncRoute(async (req, res) => {
         const articleId = String(req.params.id || '').trim();
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            const savedArticle = await queueArtifactMutation(`article-${articleId}`, async () => {
+                const existingSummaries = loadWritableJsonArtifact(
+                    PAGE_DATA_ARTICLE_SUMMARIES_PATH,
+                    APP_PAGE_DATA_ARTICLE_SUMMARIES_PATH,
+                    'article-summaries'
+                );
+                const previousSummary = existingSummaries?.[articleId] || null;
+
+                const existingArticle = loadArticleArtifact(articleId) || {};
+                const nextArticle = normalizeArticle(
+                    {
+                        ...existingArticle,
+                        ...(req.body || {}),
+                        id: articleId,
+                    },
+                    articleId
+                );
+
+                writeArticleArtifactFile(nextArticle);
+                upsertArticleIntoSharedArtifacts(nextArticle);
+                updateSectionArticleMembership(articleId, previousSummary, nextArticle);
+                invalidateArtifactCache();
+
+                return nextArticle;
+            });
+
+            res.json(deepClone(savedArticle));
+            return;
+        }
+
         const savedDatabase = await queueDatabaseMutation(`article-${articleId}`, async (database) => {
             const existing = database.articles?.[articleId] || {};
             database.articles[articleId] = normalizeArticle(
@@ -1815,6 +2374,25 @@ app.delete(
     asyncRoute(async (req, res) => {
         const articleId = String(req.params.id || '').trim();
 
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            await queueArtifactMutation(`delete-article-${articleId}`, async () => {
+                const summaries = loadWritableJsonArtifact(
+                    PAGE_DATA_ARTICLE_SUMMARIES_PATH,
+                    APP_PAGE_DATA_ARTICLE_SUMMARIES_PATH,
+                    'article-summaries'
+                );
+                const previousSummary = summaries?.[articleId] || null;
+
+                removeArticleArtifactFile(articleId);
+                deleteArticleFromSharedArtifacts(articleId);
+                updateSectionArticleMembership(articleId, previousSummary, null);
+                invalidateArtifactCache();
+            });
+
+            res.json({ ok: true });
+            return;
+        }
+
         await queueDatabaseMutation(`delete-article-${articleId}`, async (database) => {
             delete database.articles[articleId];
             return database;
@@ -1828,6 +2406,25 @@ app.put(
     '/api/site',
     requireAdmin,
     asyncRoute(async (req, res) => {
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            const nextSite = await queueArtifactMutation('site-settings', async () => {
+                const publicBase = loadWritableJsonArtifact(PAGE_DATA_BASE_PATH, APP_PAGE_DATA_BASE_PATH, 'public-base');
+                const currentSite = publicBase?.site || {};
+
+                const site = normalizeSite({
+                    ...(currentSite || {}),
+                    ...(req.body || {}),
+                });
+
+                upsertSiteIntoSharedArtifacts(site);
+                invalidateArtifactCache();
+                return site;
+            });
+
+            res.json(deepClone(nextSite));
+            return;
+        }
+
         const savedDatabase = await queueDatabaseMutation('site-settings', async (database) => {
             database.site = normalizeSite({
                 ...(database.site || {}),
@@ -1844,6 +2441,11 @@ app.post(
     '/api/import',
     requireAdmin,
     asyncRoute(async (req, res) => {
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            res.status(400).json({ error: 'Импорт отключен в режиме артефактов (Render). Используйте локальный импорт и деплой.' });
+            return;
+        }
+
         const savedDatabase = await queueDatabaseMutation('import', async () => normalizeDatabase(req.body || {}));
 
         res.json({
@@ -1858,6 +2460,11 @@ app.post(
     '/api/reset',
     requireAdmin,
     asyncRoute(async (req, res) => {
+        if (ARTIFACT_MUTATIONS_ENABLED) {
+            res.status(400).json({ error: 'Сброс отключен в режиме артефактов (Render).' });
+            return;
+        }
+
         const savedDatabase = await queueDatabaseMutation('reset', async (database) => database);
 
         res.json({
@@ -1899,7 +2506,7 @@ const start = async () => {
 
     ensureMutableStorage();
     const adminAuth = ensureAdminAuthFile(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
-    const db = SQLITE_SYNC_ENABLED ? new sqlite3.Database(DB_PATH) : null;
+    const db = SQLITE_SYNC_ENABLED && !ARTIFACT_MUTATIONS_ENABLED ? new sqlite3.Database(DB_PATH) : null;
     const initialMeta = loadMetaFromDisk();
 
     app.locals.db = db;
@@ -1919,7 +2526,9 @@ const start = async () => {
         console.log(`[boot] Static data path: ${activeStaticDataPath}`);
         console.log(`[boot] JSON body limit: ${REQUEST_BODY_LIMIT}`);
         console.log(`[boot] Database ready: ${initialMeta.counts.sections} sections, ${initialMeta.counts.articles} articles`);
-        console.log(`[boot] SQLite sync: ${SQLITE_SYNC_ENABLED ? 'enabled' : 'disabled'}`);
+        console.log(
+            `[boot] SQLite sync: ${db ? 'enabled' : SQLITE_SYNC_ENABLED ? 'disabled (artifact mode)' : 'disabled'}`
+        );
         console.log(`[boot] Static publish: ${STATIC_PUBLISH_ENABLED ? 'enabled' : 'disabled'}`);
         console.log(`[boot] Backups: ${BACKUP_SNAPSHOTS_ENABLED ? 'enabled' : 'disabled'}`);
         console.log(`[boot] Server listening on http://0.0.0.0:${PORT} (bound to all interfaces)`);

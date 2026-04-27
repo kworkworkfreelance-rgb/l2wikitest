@@ -12,6 +12,7 @@ data/raw/
 data/.private/
 copy/
 .l2wiki-storage/
+data/canonical/l2wiki-canonical.json
 
 # Temporary workspace files
 temp-*.html

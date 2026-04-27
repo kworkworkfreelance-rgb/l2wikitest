@@ -179,7 +179,7 @@ const buildHubTable = ({ articleId, label, sourceBlockId, emptyText, fallbackCat
 
                         return {
                             value: column.label,
-                            href: `/pages/article.html?article=${encodeURIComponent(linkedArticleId)}#${encodeURIComponent(blockId)}`,
+                            href: `/pages/article.html?article=${encodeURIComponent(linkedArticleId)}&grade=${encodeURIComponent(column.label)}`,
                         };
                     })
                 ),
@@ -225,7 +225,7 @@ const buildWeaponHubTable = () => ({
 
                     return {
                         value: column.label,
-                        href: `${categoryHref}#${encodeURIComponent(blockId)}`,
+                        href: `${categoryHref}&grade=${encodeURIComponent(column.label)}`,
                     };
                 })
             ),
