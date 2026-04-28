@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "C:\Users\odlju\OneDrive\Desktop\L2Wiki\add_all_dynasty.py", line 4, in <module>
+    data = json.load(f)
+           ^^^^^^^^^^^^
+  File "C:\Users\odlju\AppData\Local\Programs\Python\Python312\Lib\json\__init__.py", line 293, in load
+    return loads(fp.read(),
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\odlju\AppData\Local\Programs\Python\Python312\Lib\json\__init__.py", line 335, in loads
+    raise JSONDecodeError("Unexpected UTF-8 BOM (decode using utf-8-sig)",
+json.decoder.JSONDecodeError: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
