@@ -10,6 +10,22 @@ const routes = {
     search: isRootPage ? './pages/search.html' : './search.html',
 };
 
+try {
+    if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+    }
+} catch (error) {
+    console.warn('[Wiki] Unable to disable scroll restoration.', error);
+}
+
+const forcePageTop = () => {
+    const scrollToTop = () => window.scrollTo(0, 0);
+
+    scrollToTop();
+    window.requestAnimationFrame(scrollToTop);
+    window.setTimeout(scrollToTop, 0);
+};
+
 const FEATURED_ARTICLES = [
     { id: 'class-tree', title: 'ДЕРЕВО КЛАССОВ', text: 'Профессии, ветки развития и быстрый переход к нужному классу.' },
     { id: 'catacombs-necropolis', title: 'КАТАКОМБЫ И НЕКРОПОЛИ', text: 'Локации Seven Signs, входы, маршруты и полезные таблицы.' },
@@ -740,12 +756,6 @@ const updatePagedTable = (tableRoot, nextPage) => {
         const pageTrack = tableRoot.querySelector('.wiki-rich-table__pager-pages');
         scrollHorizontalActiveItemIntoView(pageTrack, activePage);
     }
-
-    tableRoot.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-        inline: 'nearest',
-    });
 };
 
 const bindPaginatedTables = (root = document) => {
@@ -1908,7 +1918,7 @@ const renderSectionPage = (database) => {
         return;
     }
 
-    window.scrollTo(0, 0);
+    forcePageTop();
 
     // Если группа имеет явный landingArticleId, то `section.html?section=...&group=...` считаем лишней
     // промежуточной страницей и уводим сразу на статью категории.
@@ -1998,6 +2008,8 @@ const renderSectionPage = (database) => {
             </aside>
         </div>
     `;
+
+    forcePageTop();
 };
 
 const renderInfobox = (article, section, group, className = '') => {
@@ -2349,7 +2361,7 @@ const renderArticlePage = (database) => {
         return;
     }
 
-    window.scrollTo(0, 0);
+    forcePageTop();
 
     if (article?.id) {
         target.dataset.articleId = article.id;
@@ -2440,6 +2452,8 @@ const renderArticlePage = (database) => {
             ${asideHtml}
         </div>
     `;
+
+    forcePageTop();
 
     bindQuestImageFallbacks(target);
     bindArchiveDetailTabs(target);
@@ -2883,6 +2897,8 @@ const updateSeoMetadata = (database) => {
 };
 
 const renderLoadingState = () => {
+    forcePageTop();
+
     if (currentPage === 'article') {
         const target = document.querySelector('[data-wiki-article]');
 
